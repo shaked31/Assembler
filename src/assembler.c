@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 int main(int argc, char* argv[]) {
     int i; /* for the for loop */
     char buffer[MAX_LINE_LEN] = { 0 };
@@ -35,6 +36,9 @@ int main(int argc, char* argv[]) {
 
         while (fgets(buffer, sizeof(buffer), fptr) != NULL) {
             printf("%s\n", buffer);
+            ParsedLine *ptr;
+            memset(ptr, 0, sizeof(ptr));
+            parse_line(buffer, ptr);
         }
     
         fclose(fptr);
