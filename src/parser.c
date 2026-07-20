@@ -39,14 +39,15 @@ int parse_line(char* rawline, ParsedLine* parsed_res) {
     ptr_colon = strchr(ptr_current, ':');
     if (ptr_colon) {
         label_len = ptr_colon - ptr_current;
-        if (label_len > MAX_LABLE_LEN) {
+        if (label_len > MAX_LABEL_LEN) {
             fprintf(stderr, "Label length is too long\n");
             return EXIT_FAILURE;
         }
         strncpy(parsed_res->label, ptr_current, label_len);
         ptr_current = ptr_colon + 1;
-        ptr_current = skip_whitespaces(ptr_current);
     }
+
+    ptr_current = skip_whitespaces(ptr_current);
 
     /* Checks for operation */
     while (*ptr_current && !isspace(*ptr_current)) {

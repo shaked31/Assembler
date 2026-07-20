@@ -2,7 +2,7 @@
 #define GLOBALS_H
 
 #define MAX_LINE_LEN 80
-#define MAX_LABLE_LEN 31
+#define MAX_LABEL_LEN 31
 
 /* Initial value for the in Instruction Counter */
 #define IC_START_ADDR 100
@@ -18,7 +18,7 @@
 #define MAX_MEMORY_SIZE 8192
 
 typedef struct SymbolNode {
-    char name[MAX_LABLE_LEN + 1]; /* For null terminator */
+    char name[MAX_LABEL_LEN + 1]; /* For null terminator */
     int address;
 
     unsigned char is_code;
@@ -30,7 +30,7 @@ typedef struct SymbolNode {
 } SymbolNode;
 
 typedef struct MacroNode {
-    char name[MAX_LABLE_LEN + 1];
+    char name[MAX_LABEL_LEN + 1];
     char* content;
     struct MacroNode* next; /* Pointer for the next macro in the list */
 } MacroNode;

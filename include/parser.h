@@ -13,12 +13,13 @@
  * @brief Represents a line of the assembly file.
  */
 typedef struct {
-    char label[MAX_LABLE_LEN + 1];
-    char operation[MAX_LABLE_LEN];
-    char operands[MAX_LABLE_LEN];
+    char label[MAX_LABEL_LEN + 1];
+    char operation[MAX_LABEL_LEN];
+    char operands[MAX_LABEL_LEN];
 } ParsedLine;
 
 /**
+ * @fn parse_line
  * @brief The actual parser function of a given line to the struct ParsedLine.
  * 
  * This function parses through a line, searches for ':' and by that pointer gets the label.
@@ -32,7 +33,8 @@ typedef struct {
 int parse_line(char* rawline, ParsedLine* parsed_res);
 
 /**
- * @brief Goes through the line and checks if its a comment or an empty line.
+ * @fn         is_empty_or_comment
+ * @brief            Goes through the line and checks if its a comment or an empty line.
  * 
  * @param[in]  line  String of an entire line from the file.
  * @return           An integer of success / failure.

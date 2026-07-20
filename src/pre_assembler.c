@@ -78,7 +78,9 @@ int run_pre_assembler(const char* filename) {
 
     while (fgets(line_buffer, sizeof(line_buffer), as_fptr) != NULL) {
         memset(&parsed_line, 0, sizeof(parsed_line));
-        parse_line(line_buffer, &parsed_line);
+        if (parse_line(line_buffer, &parsed_line) == 1) {
+            continue;
+        }
         if (is_in_macro) {
             if (strcmp(parsed_line.operation, "mcroend") == 0) {
                 is_in_macro = 0;
@@ -110,6 +112,9 @@ int run_pre_assembler(const char* filename) {
             else {
                 found_mcro = find_macro(head_mcro, parsed_line.operation);
                 if (found_mcro != NULL) {
+                    if (parsed_line.label[0] != '\0') {
+                        fprintf(am_fptr, "%s:\n",parsed_line.label);
+                    }
                     fputs(found_mcro->content, am_fptr);
                 }
                 else {
@@ -138,7 +143,7 @@ static int append_to_macro(MacroNode *macro, const char* line) {
             fprintf(stderr, "Couldn't allocate memory for macro's content\n");
             return EXIT_FAILURE;
         }
-        cpy(macro->content, line);
+        strcpy(macro->content, line);
     }
     else {
         /* Reallocating memory to add content to macro */
@@ -168,7 +173,7 @@ static void free_macro_table(MacroNode *head) {
 static MacroNode* find_macro(MacroNode *head, const char* name) {
     MacroNode *curr = head;
     while (curr != NULL) {
-        if (strncmp(curr->name, name, strlen(name)) == 0) {
+        if (strcmp(curr->name, name) == 0) {
             return curr;
         }
         curr = curr->next;
