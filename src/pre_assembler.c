@@ -1,11 +1,29 @@
+#include "../include/globals.h"
 #include "../include/pre_assembler.h"
 #include "../include/parser.h"
+#include "../include/symbol_table.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* for .as\0 and .am\0 */
 #define FILE_EXTENTION_SIZE 4
+
+#define FREE_VAR(var)\
+   do {\
+        if (var != NULL) { \
+        free(var);\
+        }\
+    } while(0)
+
+
+#define CLOSE_FILE(file)\
+    do {\
+        if (file != NULL) { \
+        fclose(file);\
+        }\
+    } while(0)
+   
 
 /**
  * @fn append_to_macro
@@ -14,46 +32,52 @@
  * This function operates differently and accordingly if the macro is new.
  * If it's already define and then it adds data to it using realloc and strncat
  * 
- * @param[in]  macro       Pointer to a MacroNode struct
- * @param[in]  line        String of the current line from the .as file
- * @return                 An integer of success / failure.
+ * @param[in]  macro  Pointer to a macro_node_t struct
+ * @param[in]  line   String of the current line from the .as file
+ * @return            An integer of success / failure.
  */
-static int append_to_macro(MacroNode *macro, const char* line);
+static int append_to_macro(macro_node_t *macro, const char* line);
 
 /**
  * @fn free_macro_table
  * @brief This function safely frees all dynamically allocated memory in the macro table.
  * it iterates through the linked list, freeing the content strings first,
  * and then freeing the nodes themselves to prevent memory leaks.
- * @param[in]  head  Pointer to the head of the MacroNode linked list.
+ * @param[in]  head  Pointer to the head of the macros linked list.
  */
-static void free_macro_table(MacroNode *head);
+static void free_macro_table(macro_node_t *head);
 
 /**
  * @fn find_macro
  * @brief Searches the macro linked list for a specific macro by name.
- * * @param[in] head Pointer to the head of the MacroNode linked list.
- * @param[in] name The name of the macro to search for.
- * @return         Pointer to the MacroNode if found, or NULL if not found.
+ * @param[in]  head  Pointer to the head of the macros linked list.
+ * @param[in]  name  The name of the macro to search for.
+ * @return           Pointer to the macros if found, or NULL if not found.
  */
-static MacroNode* find_macro(MacroNode *head, const char* name);
+static macro_node_t* find_macro(macro_node_t *head, const char* name);
 
 int run_pre_assembler(const char* filename) {
-    FILE *as_fptr, *am_fptr;
-    char *as_filename, *am_filename;
+    status_t status = STATUS_UNINITIALIZED;
+    FILE *as_fptr = NULL, *am_fptr = NULL;
+    char *as_filename = NULL, *am_filename = NULL;
     char line_buffer[MAX_LINE_LEN];
     ParsedLine parsed_line;
-    MacroNode *curr_mcro = NULL, *head_mcro = NULL, *found_mcro = NULL;
+    macro_node_t *curr_mcro = NULL, *head_mcro = NULL, *found_mcro = NULL, *new_node = NULL;
     unsigned char is_in_macro = 0;
     int ret = 0;
-    int status = EXIT_FAILURE;
 
     as_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
     am_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
 
-    if (as_filename == NULL || am_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for file extention");
-        return EXIT_FAILURE;
+    if (as_filename == NULL) {
+        fprintf(stderr, "Couldn't allocate memory for .as file extention\n");
+        status = STATUS_FAILURE_MEMORY_ALLOCATION;
+        goto lb_cleanup;
+    }
+    if (am_filename == NULL) {
+        fprintf(stderr, "Couldn't allocate memory for .am file extention\n");
+        status = STATUS_FAILURE_MEMORY_ALLOCATION;
+        goto lb_cleanup;
     }
 
     sprintf(as_filename, "%s.as", filename);
@@ -62,18 +86,15 @@ int run_pre_assembler(const char* filename) {
     as_fptr = fopen(as_filename, "r");
     if (as_fptr == NULL) {
         fprintf(stderr, "Couldn't open file %s in read mode\n", as_filename);
-        free(as_filename);
-        free(am_filename);
-        return EXIT_FAILURE;
+        status = STATUS_FAILURE_FILE_MGMT;
+        goto lb_cleanup;
     }
 
     am_fptr = fopen(am_filename, "w");
     if (am_fptr == NULL) {
         fprintf(stderr, "Couldn't open file %s in write mode\n", am_filename);
-        free(as_filename);
-        free(am_filename);
-        fclose(as_fptr);
-        return EXIT_FAILURE;
+        status = STATUS_FAILURE_FILE_MGMT;
+        goto lb_cleanup;
     }
 
     while (fgets(line_buffer, sizeof(line_buffer), as_fptr) != NULL) {
@@ -88,7 +109,8 @@ int run_pre_assembler(const char* filename) {
             }
             else {
                 ret = append_to_macro(curr_mcro, line_buffer);
-                if (ret == EXIT_FAILURE) {
+                if (ret != (int)STATUS_SUCCESS) {
+                    status = (status_t)ret;
                     goto lb_cleanup;
                 }
             }
@@ -96,10 +118,12 @@ int run_pre_assembler(const char* filename) {
         else {
             if (strcmp(parsed_line.operation, "mcro") == 0) {
                 /* Found a new macro definition */
-                MacroNode *new_node = (MacroNode*)malloc(sizeof(MacroNode));
+                new_node = (macro_node_t*)malloc(sizeof(macro_node_t));
                 if (new_node == NULL) {
+                    fprintf(stderr, "Couldn't allocate memory for a new macro node\n");
+                    status = STATUS_FAILURE_MEMORY_ALLOCATION;
                     goto lb_cleanup;
-                }
+                } 
                 strcpy(new_node->name, parsed_line.operands);
 
                 /* Insert the new macro in the start of the linked list */
@@ -125,23 +149,26 @@ int run_pre_assembler(const char* filename) {
         }
     }
 
-    status = EXIT_SUCCESS;
-    lb_cleanup:
-        free_macro_table(head_mcro);
-        fclose(as_fptr);
-        fclose(am_fptr);
-        free(as_filename);
-        free(am_filename);
-        return status;
+    status = STATUS_SUCCESS;
+
+lb_cleanup:
+FREE_VAR(as_filename);
+FREE_VAR(am_filename);
+CLOSE_FILE(as_fptr);
+CLOSE_FILE(am_fptr);
+free_macro_table(head_mcro); /* Contains null checking */
+return (int)status;
 }
 
+static int append_to_macro(macro_node_t *macro, const char* line) {
+    status_t status = STATUS_UNINITIALIZED;
 
-static int append_to_macro(MacroNode *macro, const char* line) {
     if (macro->content == NULL) {
         macro->content = (char*)malloc(strlen(line) + 1); /* Added one for null terminator */
         if (macro->content == NULL) {
             fprintf(stderr, "Couldn't allocate memory for macro's content\n");
-            return EXIT_FAILURE;
+            status = STATUS_FAILURE_MEMORY_ALLOCATION;
+            goto lb_cleanup;
         }
         strcpy(macro->content, line);
     }
@@ -150,16 +177,20 @@ static int append_to_macro(MacroNode *macro, const char* line) {
         char* new_content = (char*)realloc(macro->content, strlen(macro->content) + strlen(line) + 1);
         if (new_content == NULL) {
             fprintf(stderr, "Couldn't reallocate memory for macro's content\n");
-            return EXIT_FAILURE;
+            status = STATUS_FAILURE_MEMORY_ALLOCATION;
+            goto lb_cleanup;
         }
         macro->content = new_content;
         strncat(macro->content, line, strlen(line));
     }
-    return EXIT_SUCCESS;
+    status = STATUS_SUCCESS;
+    
+lb_cleanup:
+return (int)status;
 }
 
-static void free_macro_table(MacroNode *head) {
-    MacroNode *temp = NULL;
+static void free_macro_table(macro_node_t *head) {
+    macro_node_t *temp = NULL;
     while (head != NULL) {
         temp = head;
         head = head->next;
@@ -170,8 +201,8 @@ static void free_macro_table(MacroNode *head) {
     }
 }
 
-static MacroNode* find_macro(MacroNode *head, const char* name) {
-    MacroNode *curr = head;
+static macro_node_t* find_macro(macro_node_t *head, const char* name) {
+    macro_node_t *curr = head;
     while (curr != NULL) {
         if (strcmp(curr->name, name) == 0) {
             return curr;

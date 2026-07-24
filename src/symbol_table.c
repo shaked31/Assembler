@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-int insert_symbol(SymbolNode **head, const char* name, int address,
+int insert_symbol(symbol_node_t **head, const char* name, int address,
                     unsigned int is_code, unsigned int is_data, 
                     unsigned int is_entry, unsigned int is_external) {
-    SymbolNode *new_sym = NULL;
-    new_sym = (SymbolNode*)malloc(sizeof(SymbolNode));
+    symbol_node_t *new_sym = NULL;
+    new_sym = (symbol_node_t*)malloc(sizeof(symbol_node_t));
     if (new_sym == NULL) {
         fprintf(stderr, "Couldn't allocate memory to symbol node\n");
         return EXIT_FAILURE;
@@ -26,8 +26,8 @@ int insert_symbol(SymbolNode **head, const char* name, int address,
     return EXIT_SUCCESS;
 }
 
-SymbolNode* find_symbol(SymbolNode *head, const char* name) {
-    SymbolNode *curr = head;
+symbol_node_t* find_symbol(symbol_node_t *head, const char* name) {
+    symbol_node_t *curr = head;
     while (curr != NULL) {
         if(strcmp(curr->name, name) == 0) {
             return curr;
@@ -37,8 +37,8 @@ SymbolNode* find_symbol(SymbolNode *head, const char* name) {
     return NULL;
 }
 
-void free_symbol_table(SymbolNode *head) {
-    SymbolNode *temp = NULL;
+void free_symbol_table(symbol_node_t *head) {
+    symbol_node_t *temp = NULL;
     while (head != NULL) {
         temp = head;
         head = head->next;

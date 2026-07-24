@@ -17,22 +17,27 @@
 
 #define MAX_MEMORY_SIZE 8192
 
-typedef struct SymbolNode {
+typedef struct symbol_node_s {
     char name[MAX_LABEL_LEN + 1]; /* For null terminator */
     int address;
-
     unsigned char is_code;
     unsigned char is_data;
     unsigned char is_entry;
     unsigned char is_external;
-    
-    struct SymbolNode *next; /* Pointer for the next symbol in the list */
-} SymbolNode;
+    struct symbol_node_s *next; /* Pointer for the next symbol in the list */
+} symbol_node_t;
 
-typedef struct MacroNode {
+typedef struct macro_node_s {
     char name[MAX_LABEL_LEN + 1];
     char* content;
-    struct MacroNode* next; /* Pointer for the next macro in the list */
-} MacroNode;
+    struct macro_node_s* next; /* Pointer for the next macro in the list */
+} macro_node_t;
+
+typedef enum status_e {
+    STATUS_UNINITIALIZED = -1,
+    STATUS_SUCCESS,
+    STATUS_FAILURE_MEMORY_ALLOCATION,
+    STATUS_FAILURE_FILE_MGMT
+} status_t;
 
 #endif
