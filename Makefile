@@ -9,6 +9,12 @@ OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 BIN = assembler
 
+VALGRIND = valgrind
+VFLAGS = --leak-check=full --show-leak-kinds=all --track-origins=yes
+FILE = tests/test1
+
+.PHONY: clean debug valgrind
+
 $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(BIN)
 
@@ -18,6 +24,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 
 debug: CFLAGS += -g -O0
 debug: clean $(BIN)
+
+valgrind: debug
+	$(VALGRIND) $(VFLAGS) ./$(BIN) $(FILE)
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN) *.am *.ob *.ent *.ext
