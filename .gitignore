@@ -1,0 +1,15 @@
+# IDE configs
+.vscode
+
+# Build artifacts
+obj/
+assembler
+
+# Tests and outputs
+tests/
+
+# Assembler output files
+*.am
+*.ob
+*.ent
+*.ext
