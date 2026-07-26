@@ -25,14 +25,17 @@ int is_empty_or_comment(char* line) {
     return 0;
 }
 
-int parse_line(char* rawline, ParsedLine* parsed_res) {
+int parse_line(char* rawline, parsed_line_t* parsed_res) {
     char *ptr_current = rawline;
     char *ptr_colon;
     int label_len;
     int i = 0;
+    status_t status = STATUS_UNINITIALIZED;
 
     if (is_empty_or_comment(ptr_current)) {
-        return 1;  /* Nothing to parse */
+        /* Nothing to parse */
+        status = STATUS_FAILURE_NOTHING_TO_PARSE;
+        goto lb_cleaup;
     }
 
     /* Checks for label */
@@ -41,7 +44,8 @@ int parse_line(char* rawline, ParsedLine* parsed_res) {
         label_len = ptr_colon - ptr_current;
         if (label_len > MAX_LABEL_LEN) {
             fprintf(stderr, "Label length is too long\n");
-            return EXIT_FAILURE;
+            status = STATUS_FAILURE_LABEL_TOO_LONG;
+            goto lb_cleaup;
         }
         strncpy(parsed_res->label, ptr_current, label_len);
         ptr_current = ptr_colon + 1;
@@ -65,5 +69,8 @@ int parse_line(char* rawline, ParsedLine* parsed_res) {
         ptr_current++;
     }
     
-    return EXIT_SUCCESS;
+    status = STATUS_SUCCESS;
+    
+lb_cleaup:
+return (int)status;
 }

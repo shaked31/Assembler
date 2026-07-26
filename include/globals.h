@@ -17,6 +17,21 @@
 
 #define MAX_MEMORY_SIZE 8192
 
+#define FREE_VAR(var)\
+   do {\
+        if (var != NULL) { \
+            free(var);\
+        }\
+    } while(0)
+
+
+#define CLOSE_FILE(file)\
+    do {\
+        if (file != NULL) { \
+            fclose(file);\
+        }\
+    } while(0)
+
 typedef struct symbol_node_s {
     char name[MAX_LABEL_LEN + 1]; /* For null terminator */
     int address;
@@ -37,7 +52,11 @@ typedef enum status_e {
     STATUS_UNINITIALIZED = -1,
     STATUS_SUCCESS,
     STATUS_FAILURE_MEMORY_ALLOCATION,
-    STATUS_FAILURE_FILE_MGMT
+    STATUS_FAILURE_FILE_MGMT,
+    STATUS_FAILURE_NOTHING_TO_PARSE,
+    STATUS_FAILURE_LABEL_TOO_LONG,
+    STATUS_FAILURE_DUPLICATE_LABEL_DEF,
+    STATUS_FAILURE_UNKNOWN_OPERATION
 } status_t;
 
 #endif

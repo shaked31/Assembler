@@ -4,12 +4,13 @@
 #include "globals.h"
 
 /**
- * @fn                  run_pre_assembler
- * @brief               This function executes the pre-assembler phase on a given assembly source file (.as).
- *                      Reads the file line by line.
- *                      Identifies macro definitions, stores their contents dynamically in a linked list. 
- *                      Generates new expanded assembly file (.am).
- *                      When macro calls are encountered in the normal code flow, they are replaced with their respective expanded content.
+ * @fn run_pre_assembler
+ * @brief This function executes the pre-assembler phase on a given assembly source file (.as).
+ * Reads the file line by line.
+ * Identifies macro definitions, stores their contents dynamically in a linked list. 
+ * Generates new expanded assembly file (.am).
+ * When macro calls are encountered in the normal code flow, they are replaced with their respective expanded content.
+ * 
  * @param[in] filename  The base name of the source file (without the .as extension).
  * @return              EXIT_SUCCESS if the file was parsed and the .am file was generated successfully
  *                      or EXIT_FAILURE if memory allocation fails, 

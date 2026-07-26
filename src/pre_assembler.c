@@ -9,22 +9,6 @@
 /* for .as\0 and .am\0 */
 #define FILE_EXTENTION_SIZE 4
 
-#define FREE_VAR(var)\
-   do {\
-        if (var != NULL) { \
-        free(var);\
-        }\
-    } while(0)
-
-
-#define CLOSE_FILE(file)\
-    do {\
-        if (file != NULL) { \
-        fclose(file);\
-        }\
-    } while(0)
-   
-
 /**
  * @fn append_to_macro
  * @brief Helper function to append a line of text to a macro's content
@@ -61,7 +45,7 @@ int run_pre_assembler(const char* filename) {
     FILE *as_fptr = NULL, *am_fptr = NULL;
     char *as_filename = NULL, *am_filename = NULL;
     char line_buffer[MAX_LINE_LEN];
-    ParsedLine parsed_line;
+    parsed_line_t parsed_line = { 0 };
     macro_node_t *curr_mcro = NULL, *head_mcro = NULL, *found_mcro = NULL, *new_node = NULL;
     unsigned char is_in_macro = 0;
     int ret = 0;
@@ -98,10 +82,11 @@ int run_pre_assembler(const char* filename) {
     }
 
     while (fgets(line_buffer, sizeof(line_buffer), as_fptr) != NULL) {
-        memset(&parsed_line, 0, sizeof(parsed_line));
+
         if (parse_line(line_buffer, &parsed_line) == 1) {
             continue;
         }
+
         if (is_in_macro) {
             if (strcmp(parsed_line.operation, "mcroend") == 0) {
                 is_in_macro = 0;
@@ -115,6 +100,7 @@ int run_pre_assembler(const char* filename) {
                 }
             }
         }
+
         else {
             if (strcmp(parsed_line.operation, "mcro") == 0) {
                 /* Found a new macro definition */
@@ -133,11 +119,12 @@ int run_pre_assembler(const char* filename) {
                 curr_mcro = new_node;
                 is_in_macro = 1;
             }
+            
             else {
                 found_mcro = find_macro(head_mcro, parsed_line.operation);
                 if (found_mcro != NULL) {
                     if (parsed_line.label[0] != '\0') {
-                        fprintf(am_fptr, "%s:\n",parsed_line.label);
+                        fprintf(am_fptr, "%s:\n", parsed_line.label);
                     }
                     fputs(found_mcro->content, am_fptr);
                 }

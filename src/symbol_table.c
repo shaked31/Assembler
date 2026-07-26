@@ -7,10 +7,12 @@ int insert_symbol(symbol_node_t **head, const char* name, int address,
                     unsigned int is_code, unsigned int is_data, 
                     unsigned int is_entry, unsigned int is_external) {
     symbol_node_t *new_sym = NULL;
+    status_t status = STATUS_UNINITIALIZED;
     new_sym = (symbol_node_t*)malloc(sizeof(symbol_node_t));
     if (new_sym == NULL) {
         fprintf(stderr, "Couldn't allocate memory to symbol node\n");
-        return EXIT_FAILURE;
+        status = STATUS_FAILURE_MEMORY_ALLOCATION;
+        goto lb_cleanup;
     }
 
     strcpy(new_sym->name, name);
@@ -23,7 +25,10 @@ int insert_symbol(symbol_node_t **head, const char* name, int address,
     new_sym->next = *head;
     *head = new_sym;
     
-    return EXIT_SUCCESS;
+    status = STATUS_SUCCESS;
+
+lb_cleanup:
+return (int)status;
 }
 
 symbol_node_t* find_symbol(symbol_node_t *head, const char* name) {
