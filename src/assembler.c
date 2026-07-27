@@ -1,5 +1,8 @@
 #include "../include/parser.h"
 #include "../include/pre_assembler.h"
+#include "../include/first_pass.h"
+#include "../include/symbol_table.h"
+#include "../include/globals.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,8 +10,8 @@
 
 
 int main(int argc, char* argv[]) {
-    int i;
-    int pre_asm_res = 0;
+    int i = 0;
+    symbol_node_t *sym_head = NULL;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: ./assembler <file1> <file2> ...\n");
@@ -16,12 +19,18 @@ int main(int argc, char* argv[]) {
     }
     
     for (i = 1 ; i < argc ; i++) {    
-        pre_asm_res = run_pre_assembler(argv[i]);
-        if (pre_asm_res != 0) {
+        if (run_pre_assembler(argv[i]) != STATUS_SUCCESS) {
             fprintf(stderr, "Error pre assembling\n");
+            return EXIT_FAILURE;
+        }
+
+        if (run_first_pass(argv[i], &sym_head) != STATUS_SUCCESS) {
+            fprintf(stderr, "Error in first pass\n");
+            free_symbol_table(sym_head);
             return EXIT_FAILURE;
         }
     }
 
+    free_symbol_table(sym_head);
     return 0;
 }
