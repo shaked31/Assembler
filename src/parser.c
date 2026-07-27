@@ -1,4 +1,5 @@
 #include "../include/parser.h"
+
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -62,11 +63,18 @@ int parse_line(char* rawline, parsed_line_t* parsed_res) {
 
     ptr_current = skip_whitespaces(ptr_current);
     i = 0;
+
     /* Checks for operands */
-    while (*ptr_current && *ptr_current != '\n') {
+    while (*ptr_current && *ptr_current != '\n' && *ptr_current != '\r') {
         parsed_res->operands[i] = *ptr_current;
         i++;
         ptr_current++;
+    }
+    
+    /* Backtrack and erase any trailing spaces at the end of the string */
+    while (i > 0 && isspace((unsigned char)parsed_res->operands[i - 1])) {
+        parsed_res->operands[i - 1] = '\0';
+        i--;
     }
     
     status = STATUS_SUCCESS;

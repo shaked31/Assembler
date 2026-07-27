@@ -2,12 +2,10 @@
 #include "../include/pre_assembler.h"
 #include "../include/parser.h"
 #include "../include/symbol_table.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* for .as\0 and .am\0 */
-#define FILE_EXTENTION_SIZE 4
 
 /**
  * @fn append_to_macro
@@ -82,7 +80,8 @@ int run_pre_assembler(const char* filename) {
     }
 
     while (fgets(line_buffer, sizeof(line_buffer), as_fptr) != NULL) {
-
+        memset(&parsed_line, 0, sizeof(parsed_line));
+        
         if (parse_line(line_buffer, &parsed_line) == 1) {
             continue;
         }

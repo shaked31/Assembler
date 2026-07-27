@@ -1,4 +1,5 @@
 #include "../include/instructions.h"
+
 #include <string.h>
 
 #define INSTRUCTIONS_NUM (sizeof(instruction_table) / sizeof(instruction_table[0]))

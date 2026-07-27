@@ -1,21 +1,24 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define MAX_LINE_LEN 80
-#define MAX_LABEL_LEN 31
+#define MAX_LINE_LEN (80)
+#define MAX_LABEL_LEN (31)
 
 /* Initial value for the in Instruction Counter */
-#define IC_START_ADDR 100
+#define IC_START_ADDR (100)
 
 /* Initial value for the in Data Counter */
-#define DC_START_ADDR 0
+#define DC_START_ADDR (0)
 
-#define NUM_OF_REGISTERS 32
+#define NUM_OF_REGISTERS (32)
 
 /* Size of an instruction in bytes*/
-#define INSTRUCTION_SIZE_BYTES 4
+#define INSTRUCTION_SIZE_BYTES (4)
 
-#define MAX_MEMORY_SIZE 8192
+#define MAX_MEMORY_SIZE (8192)
+
+/* for .as\0 and .am\0 */
+#define FILE_EXTENTION_SIZE (4)
 
 #define FREE_VAR(var)\
    do {\
@@ -56,7 +59,10 @@ typedef enum status_e {
     STATUS_FAILURE_NOTHING_TO_PARSE,
     STATUS_FAILURE_LABEL_TOO_LONG,
     STATUS_FAILURE_DUPLICATE_LABEL_DEF,
-    STATUS_FAILURE_UNKNOWN_OPERATION
+    STATUS_FAILURE_DUPLICATE_EXTERNAL_SYM,
+    STATUS_FAILURE_UNKNOWN_OPERATION,
+    STATUS_FAILURE_INVALID_STR_IN_ASCIZ
+
 } status_t;
 
 #endif
