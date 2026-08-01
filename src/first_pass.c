@@ -2,7 +2,7 @@
 #include "../include/parser.h"
 #include "../include/instructions.h"
 #include "../include/symbol_table.h"
-#include "../include/globals.h"
+#include "../include/memory_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +20,10 @@
 #define DATA_HALF_WORD (2)
 #define DATA_WORD (4)
 
+#define IS_DATA_DIRECTIVE(directive) ((strcmp(directive, EXTERN_DIRECTIVE) == 0 || strcmp(directive, ENTRY_DIRECTIVE) == 0 || \
+                                        strcmp(directive, ASCIZ_DIRECTIVE) == 0 || strcmp(directive, DB_DIRECTIVE) == 0 || \
+                                        strcmp(directive, DH_DIRECTIVE) == 0 || strcmp(directive, DW_DIRECTIVE) == 0) ? 0 : 1)
+
 /**
  * @fn handle_directive
  * @brief The function processes a data or structural directive
@@ -27,12 +31,12 @@
  *        It registers labels into the symbol table linked list
  *        It increments the Data Counter (DC) according to the memory required
  * 
- * @param[in]     parsed    Pointer to the parsed line struct containing the lines details
- * @param[in,out] sym_head  Pointer to the head of the symbol table linked list
- * @param[in,out] DC        Pointer to a integer of the current Data Counter
- * @return                  An integer of status based on status_t enum
+ * @param[in]      parsed    Pointer to the parsed line struct containing the lines details
+ * @param[in,out]  sym_head  Pointer to the head of the symbol table linked list
+ * @param[in,out]  DC        Pointer to a integer of the current Data Counter
+ * @return                   An integer of status based on status_t enum
  */
-static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int *DC);
+static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, unsigned char *data_image, int *DC);
 
 /**
  * @fn handle_code
@@ -41,12 +45,12 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int
  *        It registers labels into the symbol table linked list as a code symbol
  *        It increments the Instruction Counter (IC) according to the memory required
  * 
- * @param[in]     parsed    Pointer to the parsed line struct containing the lines details
- * @param[in,out] sym_head  Pointer to the head of the symbol table linked list
- * @param[in,out] IC        Pointer to a integer of the current Instruction Counter
- * @return                  An integer of status based on status_t enum
+ * @param[in]      parsed    Pointer to the parsed line struct containing the lines details
+ * @param[in,out]  sym_head  Pointer to the head of the symbol table linked list
+ * @param[in,out]  IC        Pointer to a integer of the current Instruction Counter
+ * @return                   An integer of status based on status_t enum
  */
-static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, int *IC);
+static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, machine_word_t *code_image, int *IC);
 
 /**
  * @fn update_data_symbols
@@ -55,23 +59,14 @@ static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, int *IC)
  * This function adds the final Instruction Counter (IC) value to the address of every symbol 
  * marked with the 'is_data' flag.
  * 
- * @param[in,out] sym_head  Pointer to the head of the symbol table linked list
- * @param[in]     final_IC  The final calculated Instruction Counter value
- * @return                  An integer of status based on status_t enum
+ * @param[in,out]  sym_head  Pointer to the head of the symbol table linked list
+ * @param[in]      final_IC  The final calculated Instruction Counter value
+ * @return                   An integer of status based on status_t enum
  */
 static int update_data_symbols(symbol_node_t **sym_head, int final_IC);
 
-/**
- * @fn count_data_operands
- * @brief The function counts the number of numeric tokens in a comma-separated operand string.
- * It calculate how many individual numbers are present for .db, .dh, or .dw directives.
- * 
- * @param[in] operands  The raw string containing the operands.
- * @return              An integer representing the number of numeric tokens found.
- */
-static int count_data_operands(const char* operands);
-
-int run_first_pass(const char* filename, symbol_node_t **sym_head) {
+int run_first_pass(const char* filename, symbol_node_t **sym_head,
+                        machine_word_t *code_image, unsigned char *data_image, int *out_IC, int *out_DC) {
     FILE *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
     char *am_filename = NULL;
@@ -93,7 +88,7 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head) {
 
     am_fptr = fopen(am_filename, "r");
     if (am_fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in write mode\n", filename);
+        fprintf(stderr, "Couldn't open file %s in read mode\n", filename);
         status = STATUS_FAILURE_FILE_MGMT;
         goto lb_cleanup;
     }
@@ -106,10 +101,10 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head) {
         }
 
         if (parsed_line.operation[0] == '.') {
-            status = (int)handle_directive(&parsed_line, sym_head, &DC);
+            status = (int)handle_directive(&parsed_line, sym_head, data_image, &DC);
         }
         else {
-            status = (int)handle_code(&parsed_line, sym_head, &IC);
+            status = (int)handle_code(&parsed_line, sym_head, code_image, &IC);
         }
 
         if (status != STATUS_SUCCESS) {
@@ -118,6 +113,8 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head) {
     }
 
     update_data_symbols(sym_head, IC);
+    *out_IC = IC;
+    *out_DC = DC;
 
     status = STATUS_SUCCESS;
 
@@ -127,12 +124,21 @@ CLOSE_FILE(am_fptr);
 return (int)status;
 }
 
-static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int *DC) {
+static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, unsigned char *data_image, int *DC) { 
     symbol_node_t *existing_sym = NULL;
-    int num_elements = 0;
-    int data_size_multiplier = 0;
     char *str_start, *str_end;
+    char openrads_cpy[MAX_LINE_LEN] = { 0 };
+    char *token = NULL;
+    long value = 0;
+    int i = 0;
     status_t status = STATUS_UNINITIALIZED;
+
+    if (IS_DATA_DIRECTIVE(parsed->operation) != 0) {
+        /* Unknown directive */
+        fprintf(stderr, "Unknown directive '%s'\n", parsed->operation);
+        status = STATUS_FAILURE_UNKNOWN_OPERATION;
+        goto lb_cleanup;
+    }
 
     if (strcmp(parsed->operation, EXTERN_DIRECTIVE) == 0) {
         /* Register a .extern directive */
@@ -143,7 +149,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int
             goto lb_cleanup;
         }
 
-        status = insert_symbol(sym_head, parsed->operands, 0, 0, 0, 0, 1);
+        status = insert_symbol(sym_head, parsed->operands, 0, SYM_EXTERNAL, 0);
         if (status != STATUS_SUCCESS)
             goto lb_cleanup;
     }
@@ -164,7 +170,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int
             goto lb_cleanup;
         }
 
-        status = insert_symbol(sym_head, parsed->label, *DC, 0, 1, 0, 0);
+        status = insert_symbol(sym_head, parsed->label, *DC, SYM_DATA, 0);
         if (status != STATUS_SUCCESS)
             goto lb_cleanup;
     }
@@ -177,33 +183,45 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, int
             goto lb_cleanup;
         }
         str_end = strrchr(str_start + 1, '"');
-        if (str_end == NULL) {
+        if (str_end == NULL || str_end == str_start) {
             fprintf(stderr, "Invalid string format in .asciz\n");
             status = STATUS_FAILURE_INVALID_STR_IN_ASCIZ;
             goto lb_cleanup;
         }
-        *DC += (str_end - str_start);
+
+        for (i = 1 ; (str_start + i) < str_end ; i++) {
+            data_image[(*DC)++] = (unsigned char)str_start[i];
+        }
+        data_image[(*DC)++] = '\0';
         status = STATUS_SUCCESS;
         goto lb_cleanup;
     }
 
-    else if (strcmp(parsed->operation, DB_DIRECTIVE) == 0)
-        data_size_multiplier = DATA_BYTE;
-    else if (strcmp(parsed->operation, DH_DIRECTIVE) == 0)
-        data_size_multiplier = DATA_HALF_WORD;
-    else if (strcmp(parsed->operation, DW_DIRECTIVE) == 0)
-        data_size_multiplier = DATA_WORD;
+    /* The directive is .db/.dh/.dw */
+    strcpy(openrads_cpy, parsed->operands);
+    token = strtok(openrads_cpy, ", \t\r\n");
 
-    else {
-        /* Unknown directive */
-        fprintf(stderr, "Unknown directive '%s'\n", parsed->operation);
-        status = STATUS_FAILURE_UNKNOWN_OPERATION;
-        goto lb_cleanup;
-    }
+    while (token != NULL) {
+        value = atol(token);
 
-    if (data_size_multiplier > 0) {
-        num_elements = count_data_operands(parsed->operands);
-        *DC += (num_elements * data_size_multiplier);
+        if (strcmp(parsed->operation, DB_DIRECTIVE) == 0) {
+            data_image[*DC] = (unsigned char)(value & 0xFF);
+            (*DC) += DATA_BYTE;
+        }
+        else if (strcmp(parsed->operation, DH_DIRECTIVE) == 0) {
+            data_image[*DC] = (unsigned char)(value & 0xFF);
+            data_image[*DC + 1] = (unsigned char)((value >> 8) & 0xFF);
+            (*DC) += DATA_HALF_WORD;
+        }
+        else if (strcmp(parsed->operation, DW_DIRECTIVE) == 0) {
+            data_image[*DC] = (unsigned char)(value & 0xFF);
+            data_image[*DC + 1] = (unsigned char)((value >> 8) & 0xFF);
+            data_image[*DC + 2] = (unsigned char)((value >> 16) & 0xFF);
+            data_image[*DC + 3] = (unsigned char)((value >> 24) & 0xFF);
+            (*DC) += DATA_WORD;
+        }
+
+        token = strtok(NULL, ", \t\r\n");
     }
 
     status = STATUS_SUCCESS;
@@ -212,9 +230,11 @@ lb_cleanup:
 return (int)status;
 }
 
-static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, int *IC) {
+static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, machine_word_t *code_image, int *IC) {
     const instruction_info_t *instruction_info = NULL;
     symbol_node_t *existing_sym = NULL;
+    machine_word_t curr_word = { 0 };
+    int arr_idx = 0;
     status_t status = STATUS_UNINITIALIZED;
 
     if (parsed->label[0] != '\0') {
@@ -225,17 +245,30 @@ static int handle_code(parsed_line_t *parsed, symbol_node_t **sym_head, int *IC)
             goto lb_cleanup;
         }
 
-        status = insert_symbol(sym_head, parsed->label, *IC, 1, 0, 0, 0);
+        status = insert_symbol(sym_head, parsed->label, *IC, SYM_CODE, 0);
         if (status != STATUS_SUCCESS) {
             goto lb_cleanup;
         }
     }
+    if (parsed->operation[0] == '\0') {
+        status = STATUS_SUCCESS;
+        goto lb_cleanup;
+    }
+    
     instruction_info = get_instruction_info(parsed->operation);
     if (instruction_info == NULL) {
         fprintf(stderr, "Unknown instruction '%s'\n", parsed->operation);
         status = STATUS_FAILURE_UNKNOWN_OPERATION;
         goto lb_cleanup;
     }
+
+    curr_word.r.opcode = instruction_info->opcode;
+    if (instruction_info->type == R_TYPE) {
+        curr_word.r.funct = instruction_info->funct;
+    }
+
+    arr_idx = (*IC - IC_START_ADDR) / INSTRUCTION_SIZE_BYTES;
+    code_image[arr_idx] = curr_word;
 
     *IC += INSTRUCTION_SIZE_BYTES;
 
@@ -257,7 +290,7 @@ static int update_data_symbols(symbol_node_t **sym_head, int final_IC) {
 
     while (curr != NULL) {
         /* If the symbol is a data directive (.db, .dh, .dw, .asciz) */
-        if (curr->is_data == 1) {
+        if (curr->type == SYM_DATA) {
             curr->address += final_IC;
         }
         curr = curr->next;
@@ -267,27 +300,4 @@ static int update_data_symbols(symbol_node_t **sym_head, int final_IC) {
     
 lb_cleanup:
 return (int)status;
-}
-
-static int count_data_operands(const char* operands) {
-    int count = 0;
-    unsigned char in_token = 0;
-    const char *ptr = operands;
-
-    while (*ptr != '\0') {
-        /* If current char is space or comma, we are not in a number */
-        if (*ptr == ',' || isspace(*ptr)) {
-            in_token = 0;
-        }
-
-        /* Only if entering now to a new number, increase the count
-           Else, skip */
-        else if (!in_token) {
-            in_token = 1;
-            count++;
-        }
-        ptr++;
-    }
-    
-    return count;
 }

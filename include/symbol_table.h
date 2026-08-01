@@ -10,15 +10,12 @@
  * @param[in,out]  head         Pointer to the head of the symbols linked list.
  * @param[in]      name         The name of the label/symbol.
  * @param[in]      address      The memory address (IC or DC) of the symbol.
- * @param[in]      is_code      Flag indicating if it's a code instruction label.
- * @param[in]      is_data      Flag indicating if it's a data directive label.
+ * @param[in]      type         Enum of types indicating the type of the symbol.
  * @param[in]      is_entry     Flag indicating if it's an entry point.
- * @param[in]      is_external  Flag indicating if it's an external symbol.
  * @return                      EXIT_SUCCESS (0) on success, EXIT_FAILURE (1) if allocation fails.
  */
-int insert_symbol(symbol_node_t **head, const char* name, int address,
-                    unsigned int is_code, unsigned int is_data, 
-                    unsigned int is_entry, unsigned int is_external);
+int insert_symbol(symbol_node_t **head, const char* name, int address, symbol_type_t type, unsigned char is_entry);
+
 
 /**
  * @fn find_symbol

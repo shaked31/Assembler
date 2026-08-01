@@ -4,9 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int insert_symbol(symbol_node_t **head, const char* name, int address,
-                    unsigned int is_code, unsigned int is_data, 
-                    unsigned int is_entry, unsigned int is_external) {
+int insert_symbol(symbol_node_t **head, const char* name, int address, symbol_type_t type, unsigned char is_entry) {
     symbol_node_t *new_sym = NULL;
     status_t status = STATUS_UNINITIALIZED;
     new_sym = (symbol_node_t*)malloc(sizeof(symbol_node_t));
@@ -18,10 +16,8 @@ int insert_symbol(symbol_node_t **head, const char* name, int address,
 
     strcpy(new_sym->name, name);
     new_sym->address = address;
-    new_sym->is_code = is_code;
-    new_sym->is_data = is_data;
+    new_sym->type = type;
     new_sym->is_entry = is_entry;
-    new_sym->is_external = is_external;
 
     new_sym->next = *head;
     *head = new_sym;

@@ -1,7 +1,9 @@
 #include "../include/parser.h"
 #include "../include/pre_assembler.h"
 #include "../include/first_pass.h"
+#include "../include/second_pass.h"
 #include "../include/symbol_table.h"
+#include "../include/memory_image.h"
 #include "../include/globals.h"
 
 #include <stdio.h>
@@ -10,27 +12,48 @@
 
 
 int main(int argc, char* argv[]) {
-    int i = 0;
+    status_t status = STATUS_UNINITIALIZED;
     symbol_node_t *sym_head = NULL;
+    ext_node_t *ext_head = NULL;
+    machine_word_t code_image[MAX_MEMORY_SIZE] = { 0 };
+    unsigned char data_image[MAX_MEMORY_SIZE] = { 0 };
+    int IC, DC;
+    int i = 0;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: ./assembler <file1> <file2> ...\n");
-        return EXIT_FAILURE;
+        status = STATUS_FAILURE_BINARY_USAGE;
+        return status;
     }
     
-    for (i = 1 ; i < argc ; i++) {    
-        if (run_pre_assembler(argv[i]) != STATUS_SUCCESS) {
-            fprintf(stderr, "Error pre assembling\n");
-            return EXIT_FAILURE;
+    for (i = 1 ; i < argc ; i++) {
+        sym_head = NULL;
+        ext_head = NULL;
+        memset(code_image, 0, sizeof(code_image));
+        memset(data_image, 0, sizeof(data_image));
+        
+        if ((status = run_pre_assembler(argv[i]))) {
+            fprintf(stderr, "Error pre assembling file %s\n", argv[i]);
+            continue;
         }
 
-        if (run_first_pass(argv[i], &sym_head) != STATUS_SUCCESS) {
-            fprintf(stderr, "Error in first pass\n");
+        if ((status = run_first_pass(argv[i], &sym_head, code_image, data_image, &IC, &DC))) {
+            fprintf(stderr, "Error in first pass for file %s\n", argv[i]);
             free_symbol_table(sym_head);
-            return EXIT_FAILURE;
+            continue;
         }
+
+        if ((status = run_second_pass(argv[i], sym_head, code_image, &ext_head))) {
+            fprintf(stderr, "Error in second pass for file %s\n", argv[i]);
+            free_symbol_table(sym_head);
+            free_ext_list(ext_head);
+            continue;
+        }
+
+
+        free_symbol_table(sym_head);
+        free_ext_list(ext_head);
     }
 
-    free_symbol_table(sym_head);
-    return 0;
+    return (int)status;
 }

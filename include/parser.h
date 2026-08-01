@@ -15,7 +15,7 @@
 typedef struct {
     char label[MAX_LABEL_LEN + 1];
     char operation[MAX_LABEL_LEN];
-    char operands[MAX_LABEL_LEN];
+    char operands[MAX_LINE_LEN];
 } parsed_line_t;
 
 /**
