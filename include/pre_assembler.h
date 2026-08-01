@@ -1,6 +1,15 @@
 #ifndef PRE_ASSEMBLER_H
 #define PRE_ASSEMBLER_H
 
+/**
+ * @file pre_assembler.h
+ * @brief This module handles the macro expansion phase of the assembler
+ * It reads the .as file, stores macros definitions dynamically at a linked list
+ * It generates a new .am file in which all the macros are expanded into their code blocks
+ * 
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 #include "globals.h"
 
 /**
@@ -18,4 +27,4 @@
  */
 int run_pre_assembler(const char* filename);
 
-#endif
+#endif /* PRE_ASSEMBLER_H */

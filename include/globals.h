@@ -17,8 +17,8 @@
 
 #define MAX_MEMORY_SIZE (8192)
 
-/* for .as\0 and .am\0 */
-#define FILE_EXTENTION_SIZE (4)
+/* for .as, .am, .ob, .ent, .ext with \0 */
+#define FILE_EXTENSION_SIZE (5)
 
 #define FREE_VAR(var)\
    do {\
@@ -74,4 +74,4 @@ typedef enum status_e {
 
 } status_t;
 
-#endif
+#endif /* GLOBALS_H */

@@ -10,7 +10,7 @@ int add_ext_record(ext_node_t **head, const char* name, int address) {
     new_node = (ext_node_t*)malloc(sizeof(*new_node));
     
     if (new_node == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .as file extention\n");
+        fprintf(stderr, "Couldn't allocate memory for .ext file extention\n");
         status = STATUS_FAILURE_MEMORY_ALLOCATION;
         goto lb_cleanup;
     }

@@ -29,7 +29,7 @@ typedef struct {
  * @param[in]  parsed_res  Pointer to parsed_line_t struct, the function changes its content.
  * @return                 An integer of success / failure.
  */
-int parse_line(char* rawline, parsed_line_t* parsed_res);
+int parse_line(const char* rawline, parsed_line_t* parsed_res);
 
 /**
  * @fn is_empty_or_comment
@@ -38,6 +38,6 @@ int parse_line(char* rawline, parsed_line_t* parsed_res);
  * @param[in]  line  String of an entire line from the file.
  * @return           An integer of success / failure.
  */
-int is_empty_or_comment(char* line);
+int is_empty_or_comment(const char* line);
 
-#endif
+#endif /* PARSER_H */

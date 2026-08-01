@@ -22,4 +22,4 @@ int add_ext_record(ext_node_t **head, const char* name, int address);
 
 void free_ext_list(ext_node_t *head);
 
-#endif
+#endif /* EXT_TRACKER_H */

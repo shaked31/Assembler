@@ -11,23 +11,23 @@
  * @param[in]  line  Pointer to a char.
  * @return           Pointer to the next non-whitespace char.
  */
-static char *skip_whitespaces(char *pstr) {
+static const char *skip_whitespaces(const char *pstr) {
     while (*pstr && isspace(*pstr)) {
         pstr++;
     }
     return pstr;
 }
 
-int is_empty_or_comment(char* line) {
-    char *pfirst_non_whitespace = skip_whitespaces(line);
+int is_empty_or_comment(const char* line) {
+    const char *pfirst_non_whitespace = skip_whitespaces(line);
     if (*pfirst_non_whitespace == ';' || *pfirst_non_whitespace == '\0' || *pfirst_non_whitespace == '\n')
         return 1;
 
     return 0;
 }
 
-int parse_line(char* rawline, parsed_line_t* parsed_res) {
-    char *ptr_current = rawline;
+int parse_line(const char* rawline, parsed_line_t* parsed_res) {
+    const char *ptr_current = rawline;
     char *ptr_colon;
     int label_len;
     int i = 0;
@@ -49,6 +49,7 @@ int parse_line(char* rawline, parsed_line_t* parsed_res) {
             goto lb_cleaup;
         }
         strncpy(parsed_res->label, ptr_current, label_len);
+        parsed_res->label[label_len] = '\0';
         ptr_current = ptr_colon + 1;
     }
 

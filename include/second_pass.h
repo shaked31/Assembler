@@ -1,6 +1,15 @@
 #ifndef SECOND_PASS_H
 #define SECOND_PASS_H
 
+/**
+ * @file second_pass.h
+ * @brief This module executes the second pass of the assembly process
+ * It uses the built symbol table from the first pass to encode the instructions to binary
+ * It resolves memory addresses for jumps and branches, flags .entry directives and tracks external symbols
+ * 
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 #include "globals.h"
 #include "symbol_table.h"
 #include "memory_image.h"
@@ -8,8 +17,7 @@
 
 /**
  * @fn run_second_pass
- * @brief This function executes the second pass of the assembly process
- * It reads the .am file line by line
+ * @brief This function reads the .am file line by line
  * It ignores directives except .entry which it uses to update the symbol table
  * For code instructions, it uses the symbol table to complete the binary encoding of what was left during the first pass
  * 
@@ -21,4 +29,4 @@
  */
 int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head);
 
-#endif
+#endif /* SECOND_PASS_H */

@@ -1,13 +1,22 @@
 #ifndef FIRST_PASS_H
 #define FIRST_PASS_H
 
+/**
+ * @file first_pass.h
+ * @brief This module executes the first pass of the assembly process
+ * It reads the new .am file and builds a symbol table from it
+ * It counts the required memory for instructions and data
+ * It leaves memory addresses for .entry labels to be handled in the second pass
+ * 
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 #include "globals.h"
 #include "memory_image.h"
 
 /**
  * @fn run_first_pass
- * @brief Executes the first pass of the assembly process.
- * This function reads the .am file line by line.
+ * @brief This function reads the .am file line by line
  * It decides whether each line is a directive or code instruction
  * It builds the inital symbol table (without .entry) and calculates the memory needed for code (IC) and data (DC)
  * 
@@ -22,4 +31,4 @@
 int run_first_pass(const char* filename, symbol_node_t **sym_head,
                         machine_word_t *code_image, unsigned char *data_image, int *IC, int *DC);
                         
-#endif
+#endif /* FIRST_PASS_H */

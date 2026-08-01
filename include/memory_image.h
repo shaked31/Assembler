@@ -36,4 +36,4 @@ typedef union {
     unsigned int raw_word;
 } machine_word_t;
 
-#endif
+#endif /* MEMORY_IMAGE_H */

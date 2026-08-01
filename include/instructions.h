@@ -23,4 +23,4 @@ typedef struct instruction_info_s {
  */
 const instruction_info_t* get_instruction_info(const char* name);
 
-#endif
+#endif /* INSTRUCTIONS_H */

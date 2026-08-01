@@ -29,4 +29,8 @@ valgrind: debug
 	$(VALGRIND) $(VFLAGS) ./$(BIN) $(FILE)
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN) *.am *.ob *.ent *.ext
+	rm -rf $(OBJ_DIR) $(BIN)
+	find . -type f -name '*.am' -delete
+	find . -type f -name '*.ob' -delete
+	find . -type f -name '*.ent' -delete
+	find . -type f -name '*.ext' -delete

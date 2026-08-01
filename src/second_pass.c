@@ -3,6 +3,7 @@
 #include "../include/instructions.h"
 #include "../include/symbol_table.h"
 #include "../include/ext_tracker.h"
+#include "../include/utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,25 +79,12 @@ static int encode_j_type(char* operands, const instruction_info_t *instruction_i
 int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head) {
     FILE *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
-    char *am_filename = NULL;
     parsed_line_t parsed_line;
     status_t status = STATUS_UNINITIALIZED;
     int IC  = IC_START_ADDR;
 
-    am_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
-
-    if (am_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .as file extention\n");
-        status = STATUS_FAILURE_MEMORY_ALLOCATION;
-        goto lb_cleanup;
-    }
-
-    sprintf(am_filename, "%s.am", filename);
-
-    am_fptr = fopen(am_filename, "r");
+    am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in read mode\n", filename);
-        status = STATUS_FAILURE_FILE_MGMT;
         goto lb_cleanup;
     }
 
@@ -125,7 +113,6 @@ int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_
     status = STATUS_SUCCESS;
 
 lb_cleanup:
-FREE_VAR(am_filename);
 CLOSE_FILE(am_fptr);
 return (int)status;
 }

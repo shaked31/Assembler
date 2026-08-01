@@ -35,4 +35,4 @@ symbol_node_t* find_symbol(symbol_node_t *head, const char* name);
  */
 void free_symbol_table(symbol_node_t *head);
 
-#endif
+#endif /* SYMBOL_TABLE_H */

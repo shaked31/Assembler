@@ -2,6 +2,8 @@
 #include "../include/pre_assembler.h"
 #include "../include/parser.h"
 #include "../include/symbol_table.h"
+#include "../include/memory_image.h"
+#include "../include/utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,41 +43,19 @@ static macro_node_t* find_macro(macro_node_t *head, const char* name);
 int run_pre_assembler(const char* filename) {
     status_t status = STATUS_UNINITIALIZED;
     FILE *as_fptr = NULL, *am_fptr = NULL;
-    char *as_filename = NULL, *am_filename = NULL;
     char line_buffer[MAX_LINE_LEN];
     parsed_line_t parsed_line = { 0 };
     macro_node_t *curr_mcro = NULL, *head_mcro = NULL, *found_mcro = NULL, *new_node = NULL;
     unsigned char is_in_macro = 0;
     int ret = 0;
 
-    as_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
-    am_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
-
-    if (as_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .as file extention\n");
-        status = STATUS_FAILURE_MEMORY_ALLOCATION;
-        goto lb_cleanup;
-    }
-    if (am_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .am file extention\n");
-        status = STATUS_FAILURE_MEMORY_ALLOCATION;
-        goto lb_cleanup;
-    }
-
-    sprintf(as_filename, "%s.as", filename);
-    sprintf(am_filename, "%s.am", filename);
-
-    as_fptr = fopen(as_filename, "r");
+    as_fptr = open_file_with_extension(filename, "as", "r", &status);
     if (as_fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in read mode\n", as_filename);
-        status = STATUS_FAILURE_FILE_MGMT;
         goto lb_cleanup;
     }
 
-    am_fptr = fopen(am_filename, "w");
+    am_fptr = open_file_with_extension(filename, "am", "w", &status);
     if (am_fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in write mode\n", am_filename);
-        status = STATUS_FAILURE_FILE_MGMT;
         goto lb_cleanup;
     }
 
@@ -138,8 +118,6 @@ int run_pre_assembler(const char* filename) {
     status = STATUS_SUCCESS;
 
 lb_cleanup:
-FREE_VAR(as_filename);
-FREE_VAR(am_filename);
 CLOSE_FILE(as_fptr);
 CLOSE_FILE(am_fptr);
 free_macro_table(head_mcro); /* Contains null checking */

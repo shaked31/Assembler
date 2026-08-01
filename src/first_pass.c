@@ -3,6 +3,7 @@
 #include "../include/instructions.h"
 #include "../include/symbol_table.h"
 #include "../include/memory_image.h"
+#include "../include/utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,27 +70,14 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
                         machine_word_t *code_image, unsigned char *data_image, int *out_IC, int *out_DC) {
     FILE *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
-    char *am_filename = NULL;
     parsed_line_t parsed_line;
     status_t status = STATUS_UNINITIALIZED;
 
     int IC  = IC_START_ADDR;
     int DC  = DC_START_ADDR;
 
-    am_filename = (char*)malloc(strlen(filename) + FILE_EXTENTION_SIZE);
-
-    if (am_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .as file extention\n");
-        status = STATUS_FAILURE_MEMORY_ALLOCATION;
-        goto lb_cleanup;
-    }
-
-    sprintf(am_filename, "%s.am", filename);
-
-    am_fptr = fopen(am_filename, "r");
+    am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in read mode\n", filename);
-        status = STATUS_FAILURE_FILE_MGMT;
         goto lb_cleanup;
     }
 
@@ -119,7 +107,6 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
     status = STATUS_SUCCESS;
 
 lb_cleanup:
-FREE_VAR(am_filename);
 CLOSE_FILE(am_fptr);
 return (int)status;
 }
@@ -161,7 +148,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
         goto lb_cleanup;
     }
 
-    else if (parsed->label[0] != '\0') {
+    if (parsed->label[0] != '\0') {
         /* Register a label for data directives */
         existing_sym = find_symbol(*sym_head, parsed->label);
         if (existing_sym != NULL) {
@@ -175,7 +162,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
             goto lb_cleanup;
     }
 
-    else if (strcmp(parsed->operation, ASCIZ_DIRECTIVE) == 0) {
+    if (strcmp(parsed->operation, ASCIZ_DIRECTIVE) == 0) {
         str_start = strchr(parsed->operands, '"');
         if (str_start == NULL) {
             fprintf(stderr, "Invalid string format in .asciz\n");

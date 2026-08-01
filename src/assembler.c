@@ -1,9 +1,21 @@
+/**
+ * @file assembler.c
+ * @brief This source file is the main entry point of the assembler program
+ * It receives CLI arguments for target files, initialize memory data structures
+ * It uses the main functions of pre_assember.h, first_pass.h, second_pass.h to complete the assembler program
+ * It handles memory cleanup
+ * 
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
+
 #include "../include/parser.h"
 #include "../include/pre_assembler.h"
 #include "../include/first_pass.h"
 #include "../include/second_pass.h"
 #include "../include/symbol_table.h"
 #include "../include/memory_image.h"
+#include "../include/file_generator.h"
 #include "../include/globals.h"
 
 #include <stdio.h>
@@ -27,6 +39,9 @@ int main(int argc, char* argv[]) {
     }
     
     for (i = 1 ; i < argc ; i++) {
+        if (i != 1) printf("\n");
+        printf("Assembling file %s\n", argv[i]);
+
         sym_head = NULL;
         ext_head = NULL;
         memset(code_image, 0, sizeof(code_image));
@@ -49,6 +64,15 @@ int main(int argc, char* argv[]) {
             free_ext_list(ext_head);
             continue;
         }
+
+        if ((status = generate_files(argv[i], code_image, data_image, &sym_head, &ext_head, IC, DC))) {
+            fprintf(stderr, "Error generating output files for file %s\n", argv[i]);
+            free_symbol_table(sym_head);
+            free_ext_list(ext_head);
+            continue;
+        }
+
+        printf("Successfully assembled %s\n", argv[i]);
 
 
         free_symbol_table(sym_head);
