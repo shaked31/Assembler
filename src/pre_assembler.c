@@ -3,7 +3,9 @@
 #include "../include/parser.h"
 #include "../include/symbol_table.h"
 #include "../include/memory_image.h"
+#include "../include/instructions.h"
 #include "../include/utils.h"
+#include "../include/error_handler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,14 +49,14 @@ int run_pre_assembler(const char* filename) {
     parsed_line_t parsed_line = { 0 };
     macro_node_t *curr_mcro = NULL, *head_mcro = NULL, *found_mcro = NULL, *new_node = NULL;
     unsigned char is_in_macro = 0;
-    int ret = 0;
+    unsigned int asm_line_counter = 1;
 
-    as_fptr = open_file_with_extension(filename, "as", "r", &status);
+    as_fptr = open_file_with_extension(filename, "as", "r", &status, asm_line_counter);
     if (as_fptr == NULL) {
         goto lb_cleanup;
     }
 
-    am_fptr = open_file_with_extension(filename, "am", "w", &status);
+    am_fptr = open_file_with_extension(filename, "am", "w", &status, asm_line_counter);
     if (am_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -72,9 +74,7 @@ int run_pre_assembler(const char* filename) {
                 curr_mcro = NULL;
             }
             else {
-                ret = append_to_macro(curr_mcro, line_buffer);
-                if (ret != (int)STATUS_SUCCESS) {
-                    status = (status_t)ret;
+                if ((status = (status_t)append_to_macro(curr_mcro, line_buffer))) {
                     goto lb_cleanup;
                 }
             }
@@ -83,9 +83,16 @@ int run_pre_assembler(const char* filename) {
         else {
             if (strcmp(parsed_line.operation, "mcro") == 0) {
                 /* Found a new macro definition */
+                if(get_instruction_info(parsed_line.operation) != NULL) {
+                    /* The macro name is an instruction name */
+                    print_asm_error(asm_line_counter, "Macro name '%s' can't be an instruction name\n", parsed_line.operation);
+                    status = STATUS_FAILURE_INVALID_MACRO_NAME;
+                    goto lb_cleanup;
+                }
+
                 new_node = (macro_node_t*)malloc(sizeof(macro_node_t));
                 if (new_node == NULL) {
-                    fprintf(stderr, "Couldn't allocate memory for a new macro node\n");
+                    print_sys_error("Couldn't allocate memory for a new macro node\n");
                     status = STATUS_FAILURE_MEMORY_ALLOCATION;
                     goto lb_cleanup;
                 } 
@@ -113,6 +120,7 @@ int run_pre_assembler(const char* filename) {
                 }
             }
         }
+        asm_line_counter++;
     }
 
     status = STATUS_SUCCESS;
@@ -130,7 +138,7 @@ static int append_to_macro(macro_node_t *macro, const char* line) {
     if (macro->content == NULL) {
         macro->content = (char*)malloc(strlen(line) + 1); /* Added one for null terminator */
         if (macro->content == NULL) {
-            fprintf(stderr, "Couldn't allocate memory for macro's content\n");
+            print_sys_error("Couldn't allocate memory for macro's content\n");
             status = STATUS_FAILURE_MEMORY_ALLOCATION;
             goto lb_cleanup;
         }
@@ -140,7 +148,7 @@ static int append_to_macro(macro_node_t *macro, const char* line) {
         /* Reallocating memory to add content to macro */
         char* new_content = (char*)realloc(macro->content, strlen(macro->content) + strlen(line) + 1);
         if (new_content == NULL) {
-            fprintf(stderr, "Couldn't reallocate memory for macro's content\n");
+            print_sys_error("Couldn't reallocate memory for macro's content\n");
             status = STATUS_FAILURE_MEMORY_ALLOCATION;
             goto lb_cleanup;
         }

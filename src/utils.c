@@ -1,9 +1,12 @@
 #include "../include/utils.h"
+#include "../include/error_handler.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
-FILE* open_file_with_extension(const char* base_name, const char* extension, const char* mode, status_t *status) {
+FILE* open_file_with_extension(const char* base_name, const char* extension, 
+                                    const char* mode, status_t *status, unsigned int asm_line_counter) {
     FILE *fptr = NULL;
     char* full_filename = NULL;
 
@@ -11,14 +14,14 @@ FILE* open_file_with_extension(const char* base_name, const char* extension, con
     full_filename = (char*)malloc(strlen(base_name) + strlen(extension) + 2);
 
     if (full_filename == NULL) {
-        fprintf(stderr, "Couldn't allocate memory for .%s file extention\n", extension);
+        print_sys_error("Couldn't allocate memory for .%s file extention\n", extension);
         *status = STATUS_FAILURE_MEMORY_ALLOCATION;
         return NULL;
     }
     sprintf(full_filename, "%s.%s", base_name, extension);
     fptr = fopen(full_filename, mode);
         if (fptr == NULL) {
-        fprintf(stderr, "Couldn't open file %s in %s mode\n", full_filename, mode);
+        print_sys_error("Couldn't open file %s in %s mode\n", full_filename, mode);
         *status = STATUS_FAILURE_FILE_MGMT;
         free(full_filename);
         return NULL;
@@ -26,4 +29,44 @@ FILE* open_file_with_extension(const char* base_name, const char* extension, con
 
     free(full_filename);
     return fptr;
+}
+
+int validate_operands(const char* operands) {
+    status_t status = STATUS_UNINITIALIZED;
+    const char *ptr = operands;
+    const char *next = NULL;
+
+    while (*ptr && isspace((unsigned char)*ptr)) {
+        /* Skip spaces after a ',' */
+        ptr++;
+    }
+    
+    if (*ptr == ',') {
+        /* If first ',' before operands, it's invalid */
+        status = STATUS_FAILURE_INVALID_OPERANDS;
+        goto lb_cleanup;
+    }
+
+    while (*ptr) {
+        if (*ptr == ',') {
+            next = ptr + 1;
+
+            while (*next && isspace((unsigned char)*next)) {
+                /* Skip spaces after a ',' */
+                next++;
+            }
+            
+            if (*next == ',' || *next == '\0') {
+                /* If next non-space char is a ',' or null-terminator, it's invalid */
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+            }
+        }
+        ptr++;
+    }
+
+    status = STATUS_SUCCESS;
+
+lb_cleanup:
+return (int)status;
 }

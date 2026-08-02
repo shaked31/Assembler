@@ -4,6 +4,7 @@
 #include "../include/symbol_table.h"
 #include "../include/ext_tracker.h"
 #include "../include/utils.h"
+#include "../include/error_handler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +20,7 @@
  * @param[in,out]  sym_head  Pointer to the head of the symbol table linked list
  * @return                   An integer of status based on status_t enum
  */
-static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head);
+static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head, unsigned int asm_line_counter);
 
 /**
  * @fn encode_instruction
@@ -32,7 +33,8 @@ static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head);
  * @param[in,out]  IC          Pointer to a integer of the current Instruction Counter
  * @return                     An integer of status based on status_t enum
  */
-static int encode_instruction(parsed_line_t *parsed, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head, int *IC);
+static int encode_instruction(parsed_line_t *parsed, symbol_node_t *sym_head, machine_word_t *code_image, 
+                                ext_node_t **ext_head, int *IC, unsigned int asm_line_counter);
 
 /**
  * @fn encode_r_type
@@ -45,7 +47,7 @@ static int encode_instruction(parsed_line_t *parsed, symbol_node_t *sym_head, ma
  * @param[in,out]  word                Pointer to a machine word to update
  * @return                             An integer of status based on status_t enum
  */
-static int encode_r_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word);
+static int encode_r_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word, unsigned int asm_line_counter);
 
 /**
  * @fn encode_i_type
@@ -57,7 +59,8 @@ static int encode_r_type(char* operands, const instruction_info_t *instruction_i
  * @param[in,out]  word                Pointer to a machine word to update
  * @return                             An integer of status based on status_t enum
  */
-static int encode_i_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word, symbol_node_t *sym_head, int curr_IC);
+static int encode_i_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word,
+                            symbol_node_t *sym_head, int IC, unsigned int asm_line_counter);
 
 /**
  * @fn encode_j_type
@@ -70,11 +73,11 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
  * @param[in,out]  word                Pointer to a machine word to update
  * @param[in]      sym_head            Pointer to the head of the symbol table
  * @param[in,out]  ext_head            Pointer the head of the external nodes linked list
- * @param[in]      curr_IC             The currenct instruction counter
+ * @param[in]      IC                  The currenct instruction counter
  * @return                             An integer of status based on status_t enum
  */
 static int encode_j_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word,
-                            symbol_node_t *sym_head, ext_node_t **ext_head, int curr_IC);
+                            symbol_node_t *sym_head, ext_node_t **ext_head, int IC, unsigned int asm_line_counter);
 
 int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head) {
     FILE *am_fptr = NULL;
@@ -82,7 +85,7 @@ int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_
     parsed_line_t parsed_line;
     status_t status = STATUS_UNINITIALIZED;
     int IC  = IC_START_ADDR;
-
+    unsigned int asm_line_counter = 1;
     am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
         goto lb_cleanup;
@@ -97,17 +100,18 @@ int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_
             continue;
 
         if (strcmp(parsed_line.operation, ENTRY_DIRECTIVE) == 0) {
-            status = handle_entry(&parsed_line, sym_head);
+            status = handle_entry(&parsed_line, sym_head, asm_line_counter);
             if (status != STATUS_SUCCESS) {
                 goto lb_cleanup;
             }
         }
         else if (parsed_line.operation[0] != '.') {
-            status = encode_instruction(&parsed_line, sym_head, code_image, ext_head, &IC);
+            status = encode_instruction(&parsed_line, sym_head, code_image, ext_head, &IC, asm_line_counter);
             if (status != STATUS_SUCCESS) {
                 goto lb_cleanup;
             }
         }
+        asm_line_counter++;
     }
 
     status = STATUS_SUCCESS;
@@ -117,13 +121,13 @@ CLOSE_FILE(am_fptr);
 return (int)status;
 }
 
-static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head) {
+static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     symbol_node_t *existing_sym = NULL;
     existing_sym = find_symbol(sym_head, parsed->operands);
     
     if (existing_sym == NULL) {
-        fprintf(stderr, ".entry directive refers to undefined label '%s'\n", parsed->operands);
+        print_asm_error(asm_line_counter, ".entry directive refers to undefined label '%s'\n", parsed->operands);
         status = STATUS_FAILURE_UNDEFINED_LABEL;
         goto lb_cleanup;
     }
@@ -135,25 +139,26 @@ lb_cleanup:
 return (int)status;
 }
 
-static int encode_instruction(parsed_line_t *parsed, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head, int *IC) {
+static int encode_instruction(parsed_line_t *parsed, symbol_node_t *sym_head, machine_word_t *code_image,
+                                ext_node_t **ext_head, int *IC, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     const instruction_info_t *instruction_info = NULL;
     int arr_idx = (*IC - IC_START_ADDR) / INSTRUCTION_SIZE_BYTES;
 
     instruction_info = get_instruction_info(parsed->operation);
     if (instruction_info == NULL) {
-        fprintf(stderr, "Unknown instruction '%s'\n", parsed->operation);
+        print_asm_error(asm_line_counter, "Unknown instruction '%s'\n", parsed->operation);
         status = STATUS_FAILURE_UNKNOWN_OPERATION;
         goto lb_cleanup;
     }
     if (instruction_info->type == R_TYPE) {
-        status = encode_r_type(parsed->operands, instruction_info, &code_image[arr_idx]);
+        status = encode_r_type(parsed->operands, instruction_info, &code_image[arr_idx], asm_line_counter);
     }
     else if (instruction_info->type == I_TYPE) {
-        status = encode_i_type(parsed->operands, instruction_info, &code_image[arr_idx], sym_head, *IC);
+        status = encode_i_type(parsed->operands, instruction_info, &code_image[arr_idx], sym_head, *IC, asm_line_counter);
     }
     else if (instruction_info->type == J_TYPE) {
-        status = encode_j_type(parsed->operands, instruction_info, &code_image[arr_idx], sym_head, ext_head, *IC);
+        status = encode_j_type(parsed->operands, instruction_info, &code_image[arr_idx], sym_head, ext_head, *IC, asm_line_counter);
     }
 
     if (status == STATUS_SUCCESS) {
@@ -164,11 +169,17 @@ lb_cleanup:
 return (int)status;
 }
 
-static int encode_r_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word) {
+static int encode_r_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word, unsigned int asm_line_counter) {
+    status_t status = STATUS_UNINITIALIZED;
     char operands_cpy[MAX_LINE_LEN] = { 0 };
     char *token = NULL;
     int r1 = 0, r2 = 0, r3 = 0;
     int count = 0;
+
+    if ((status = validate_operands(operands))) {
+        print_asm_error(asm_line_counter, "Invalid format of operands\n");
+        goto lb_cleanup;
+    }
 
     strcpy(operands_cpy, operands);
     token = strtok(operands_cpy, ", \t\r\n");
@@ -199,14 +210,23 @@ static int encode_r_type(char* operands, const instruction_info_t *instruction_i
         word->r.rd = 0;
     }
 
-    return (int)STATUS_SUCCESS;
+    status = STATUS_SUCCESS;
+
+lb_cleanup:
+return (int)status;
 }
 
-static int encode_i_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word, symbol_node_t *sym_head, int curr_IC) {
+static int encode_i_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word,
+                            symbol_node_t *sym_head, int IC, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     char operands_cpy[MAX_LINE_LEN] = { 0 };
     char *t1 = NULL, *t2 = NULL, *t3 = NULL;
     symbol_node_t *sym = NULL;
+    
+    if ((status = validate_operands(operands))) {
+        print_asm_error(asm_line_counter, "Invalid format of operands\n");
+        goto lb_cleanup;
+    }
 
     strcpy(operands_cpy, operands);
     t1 = strtok(operands_cpy, ", \t\r\n");
@@ -214,7 +234,7 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
     t3 = strtok(NULL, ", \t\r\n");
 
     if (t1 == NULL || t2 == NULL || t3 == NULL) {
-        fprintf(stderr, "Missing operands for I-type instruction\n");
+        print_asm_error(asm_line_counter, "Missing operands for I-type instruction\n");
         status = STATUS_FAILURE_MISSING_OPERANDS;
         goto lb_cleanup;
     }
@@ -226,17 +246,17 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
 
         sym = find_symbol(sym_head, t3);
         if (sym == NULL) {
-            fprintf(stderr, "Undefined label '%s' in branch instruction\n", t3);
+            print_asm_error(asm_line_counter, "Undefined label '%s' in branch instruction\n", t3);
             status = STATUS_FAILURE_UNDEFINED_LABEL;
             goto lb_cleanup;
         }
         if (sym->type == SYM_EXTERNAL) {
-            fprintf(stderr, "Target branch '%s' can't be an external label\n", t3);
+            print_asm_error(asm_line_counter, "Target branch '%s' can't be an external label\n", t3);
             status = STATUS_FAILURE_UNDEFINED_LABEL;
             goto lb_cleanup;
         }
 
-        word->i.immed = sym->address - curr_IC;
+        word->i.immed = sym->address - IC;
     }
     else {
         /* Arithmetic and load/store instructions */
@@ -252,7 +272,7 @@ return (int)status;
 }
 
 static int encode_j_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word,
-                            symbol_node_t *sym_head, ext_node_t **ext_head, int curr_IC) {
+                            symbol_node_t *sym_head, ext_node_t **ext_head, int IC, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     char operands_cpy[MAX_LINE_LEN] = { 0 };
     char *token = NULL;
@@ -269,7 +289,7 @@ static int encode_j_type(char* operands, const instruction_info_t *instruction_i
     strcpy(operands_cpy, operands);
     token = strtok(operands_cpy, " \t\r\n");
     if (token == NULL) {
-        fprintf(stderr, "Missing operand for J-type instruction\n");
+        print_asm_error(asm_line_counter, "Missing operand for J-type instruction\n");
         status = STATUS_FAILURE_MISSING_OPERANDS;
         goto lb_cleanup;
     }
@@ -285,13 +305,13 @@ static int encode_j_type(char* operands, const instruction_info_t *instruction_i
         sym = find_symbol(sym_head, token);
 
         if (sym == NULL) {
-            fprintf(stderr, "Undefined label '%s' in branch instruction\n", token);
+            print_asm_error(asm_line_counter, "Undefined label '%s' in branch instruction\n", token);
             status = STATUS_FAILURE_UNDEFINED_LABEL;
             goto lb_cleanup;
         }
         if (sym->type == SYM_EXTERNAL) {
             word->j.address = 0;
-            add_ext_record(ext_head, sym->name, curr_IC);
+            add_ext_record(ext_head, sym->name, IC);
         }
         else 
             word->j.address = sym->address;

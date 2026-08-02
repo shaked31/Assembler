@@ -3,10 +3,9 @@
 
 /**
  * @file second_pass.h
- * @brief This module executes the second pass of the assembly process
+ * @brief Executes the second pass of the assembly process
  * It uses the built symbol table from the first pass to encode the instructions to binary
  * It resolves memory addresses for jumps and branches, flags .entry directives and tracks external symbols
- * 
  * @author Shaked Pollak, Daniela Aslan
  */
 

@@ -1,6 +1,14 @@
 #ifndef EXT_TRACKER_H
 #define EXT_TRACKER_H
 
+/**
+ * @file ext_tracker.h
+ * @brief Tracks external symbols usage
+ * It provides a link list of external symbols and a helper function to add an external symbol
+ * Also provides a function to free dynamically allocated memory
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 #include "globals.h"
 
 typedef struct ext_node_s {

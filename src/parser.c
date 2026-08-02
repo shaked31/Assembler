@@ -1,4 +1,5 @@
 #include "../include/parser.h"
+#include "../include/error_handler.h"
 
 #include <string.h>
 #include <ctype.h>
@@ -26,17 +27,22 @@ int is_empty_or_comment(const char* line) {
     return 0;
 }
 
-int parse_line(const char* rawline, parsed_line_t* parsed_res) {
+int parse_line(const char* rawline, parsed_line_t* parsed_res, unsigned int line_num) {
     const char *ptr_current = rawline;
     char *ptr_colon;
     int label_len;
     int i = 0;
     status_t status = STATUS_UNINITIALIZED;
 
+    if (strlen(rawline) > MAX_LINE_LEN - 2 && strchr(rawline, '\n') == NULL) {
+        print_asm_error(line_num, "Couldn't parse a line that have more than 80 chars\n");
+        status = STATUS_FAILURE_LINE_TOO_LONG;
+        goto lb_cleanup;
+    }
     if (is_empty_or_comment(ptr_current)) {
         /* Nothing to parse */
         status = STATUS_FAILURE_NOTHING_TO_PARSE;
-        goto lb_cleaup;
+        goto lb_cleanup;
     }
 
     /* Checks for label */
@@ -44,9 +50,9 @@ int parse_line(const char* rawline, parsed_line_t* parsed_res) {
     if (ptr_colon) {
         label_len = ptr_colon - ptr_current;
         if (label_len > MAX_LABEL_LEN) {
-            fprintf(stderr, "Label length is too long\n");
+            print_asm_error(line_num, "Label length is too long\n");
             status = STATUS_FAILURE_LABEL_TOO_LONG;
-            goto lb_cleaup;
+            goto lb_cleanup;
         }
         strncpy(parsed_res->label, ptr_current, label_len);
         parsed_res->label[label_len] = '\0';
@@ -80,6 +86,6 @@ int parse_line(const char* rawline, parsed_line_t* parsed_res) {
     
     status = STATUS_SUCCESS;
     
-lb_cleaup:
+lb_cleanup:
 return (int)status;
 }

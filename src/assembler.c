@@ -4,7 +4,6 @@
  * It receives CLI arguments for target files, initialize memory data structures
  * It uses the main functions of pre_assember.h, first_pass.h, second_pass.h to complete the assembler program
  * It handles memory cleanup
- * 
  * @author Shaked Pollak, Daniela Aslan
  */
 

@@ -1,6 +1,13 @@
 #ifndef INSTRUCTIONS_H
 #define INSTRUCTIONS_H
 
+/**
+ * @file instructions.h
+ * @brief Defines a basic struct for instructions info
+ * It provides a function to get a struct of instruction by its name
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 typedef enum instruction_type_e {
     UNKNOWN_TYPE,
     R_TYPE,

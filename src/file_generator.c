@@ -5,23 +5,59 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int create_ob_file(const char* filename, int IC, int DC, machine_word_t *code_image, unsigned char *data_image);
-static int create_ent_file(const char* filename, symbol_node_t *sym_head);
-static int create_ext_file(const char* filename, ext_node_t *ext_head);
+/**
+ * @fn create_ob_file
+ * @brief Creates an ob file using the code and data images, the instruction and data counter
+ * @param[in]  filename      The base filename (without extension)
+ * @param[in]  code_image    Array representing the instruction memory
+ * @param[in]  data_image    Array representing the data memory
+ * @param[in]  IC            An integer of the current instruction counter
+ * @param[in]  DC            An integer of the current data counter
+ * @param[in]  line_counter  An integer of the line count of the assembly source file
+ * @return                   An integer of status based on status_t enum
+ */
+static int create_ob_file(const char* filename, machine_word_t *code_image, 
+    unsigned char *data_image, int IC, int DC, unsigned int line_counter);
+
+/**
+ * @fn create_ent_file
+ * @brief Creates an ent file of symbol and address
+ * It goes through the symbol linked list and checks if there's an entry symbol
+ * If so it adds it to the file
+ * 
+ * @param[in]  filename      The full name of the .am file to go through
+ * @param[in]  sym_head      Pointer of the head of the symbol linked list linked list
+ * @param[in]  line_counter  An integer of the line count of the assembly source file
+ * @return                   An integer of status based on status_t enum
+ */
+static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsigned int line_counter);
+
+/**
+ * @fn create_ext_file
+ * @brief Creates an ext file of symbol and address
+ * It goes through the external symbols linked list and checks if there's an entry symbol
+ * If so it adds it to the file
+ * 
+ * @param[in]  filename      The full name of the .am file to go through
+ * @param[in]  ext_head      Pointer to the head of the externals linked list
+ * @param[in]  line_counter  An integer of the line count of the assembly source file
+ * @return                   An integer of status based on status_t enum
+ */
+static int create_ext_file(const char* filename, ext_node_t *ext_head, unsigned int line_counter);
 
 int generate_files(const char* filename, machine_word_t *code_image, unsigned char *data_image,
-                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC) {
+                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC, unsigned int line_counter) {
 
     status_t status = STATUS_UNINITIALIZED;
-    if ((status = create_ob_file(filename, IC, DC, code_image, data_image))) {
+    if ((status = create_ob_file(filename, code_image, data_image, IC, DC, line_counter))) {
         return status;
     }
 
-    if ((status = create_ent_file(filename, *sym_head))) {
+    if ((status = create_ent_file(filename, *sym_head, line_counter))) {
         return status;
     }
 
-    if ((status = create_ext_file(filename, *ext_head))) {
+    if ((status = create_ext_file(filename, *ext_head, line_counter))) {
         return status;
     }
 
@@ -29,14 +65,15 @@ int generate_files(const char* filename, machine_word_t *code_image, unsigned ch
     return status;
 }
 
-static int create_ob_file(const char* filename, int IC, int DC, machine_word_t *code_image, unsigned char *data_image) {
+static int create_ob_file(const char* filename, machine_word_t *code_image, unsigned char *data_image, 
+                            int IC, int DC, unsigned int line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     FILE *ob_fptr = NULL;
     int i = 0;
     int addr = IC_START_ADDR;
     int instruction_bytes = IC - IC_START_ADDR;
 
-    ob_fptr = open_file_with_extension(filename, "ob", "w", &status);
+    ob_fptr = open_file_with_extension(filename, "ob", "w", &status, line_counter);
     if (ob_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -63,7 +100,7 @@ CLOSE_FILE(ob_fptr);
 return (int)status;
 }
 
-static int create_ent_file(const char* filename, symbol_node_t *sym_head) {
+static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsigned int line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     symbol_node_t *curr = sym_head;
     int has_entry = 0;
@@ -81,7 +118,7 @@ static int create_ent_file(const char* filename, symbol_node_t *sym_head) {
     }
 
 
-    ent_fptr = open_file_with_extension(filename, "ent", "w", &status);
+    ent_fptr = open_file_with_extension(filename, "ent", "w", &status, line_counter);
     if (ent_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -101,7 +138,7 @@ CLOSE_FILE(ent_fptr);
 return (int)status;
 }
 
-static int create_ext_file(const char* filename, ext_node_t *ext_head) {
+static int create_ext_file(const char* filename, ext_node_t *ext_head, unsigned int line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     ext_node_t *curr = ext_head;
     FILE *ext_fptr = NULL;
@@ -110,7 +147,7 @@ static int create_ext_file(const char* filename, ext_node_t *ext_head) {
         return STATUS_SUCCESS;
     }
 
-    ext_fptr = open_file_with_extension(filename, "ext", "w", &status);
+    ext_fptr = open_file_with_extension(filename, "ext", "w", &status, line_counter);
     if (ext_fptr == NULL) {
         goto lb_cleanup;
     }

@@ -1,7 +1,13 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define MAX_LINE_LEN (80)
+/**
+ * @file globals.h
+ * @brief Header that contains global macros, structs and enum for the assembler
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
+#define MAX_LINE_LEN (82)
 #define MAX_LABEL_LEN (31)
 
 /* Initial value for the in Instruction Counter */
@@ -65,13 +71,15 @@ typedef enum status_e {
     STATUS_FAILURE_FILE_MGMT,
     STATUS_FAILURE_NOTHING_TO_PARSE,
     STATUS_FAILURE_LABEL_TOO_LONG,
+    STATUS_FAILURE_LINE_TOO_LONG,
     STATUS_FAILURE_DUPLICATE_LABEL_DEF,
     STATUS_FAILURE_DUPLICATE_EXTERNAL_SYM,
     STATUS_FAILURE_INVALID_STR_IN_ASCIZ,
     STATUS_FAILURE_UNKNOWN_OPERATION,
+    STATUS_FAILURE_INVALID_OPERANDS,
     STATUS_FAILURE_UNDEFINED_LABEL,
-    STATUS_FAILURE_MISSING_OPERANDS
-
+    STATUS_FAILURE_MISSING_OPERANDS,
+    STATUS_FAILURE_INVALID_MACRO_NAME
 } status_t;
 
 #endif /* GLOBALS_H */

@@ -3,10 +3,9 @@
 
 /**
  * @file pre_assembler.h
- * @brief This module handles the macro expansion phase of the assembler
+ * @brief Handles the macro expansion phase of the assembler
  * It reads the .as file, stores macros definitions dynamically at a linked list
  * It generates a new .am file in which all the macros are expanded into their code blocks
- * 
  * @author Shaked Pollak, Daniela Aslan
  */
 

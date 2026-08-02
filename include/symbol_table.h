@@ -1,6 +1,15 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
+/**
+ * @file symbol_table.h
+ * @brief Provides functions that handles the symbol table
+ *        1. Insert to linked list
+ *        2. find symbol from linked list
+ *        3. free the dynamically allocated linked list
+ * @author Shaked Pollak, Daniela Aslan
+ */
+
 #include "globals.h"
 
 /**

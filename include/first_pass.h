@@ -7,7 +7,6 @@
  * It reads the new .am file and builds a symbol table from it
  * It counts the required memory for instructions and data
  * It leaves memory addresses for .entry labels to be handled in the second pass
- * 
  * @author Shaked Pollak, Daniela Aslan
  */
 
