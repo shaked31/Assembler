@@ -80,12 +80,13 @@ static int encode_j_type(char* operands, const instruction_info_t *instruction_i
                             symbol_node_t *sym_head, ext_node_t **ext_head, int IC, unsigned int asm_line_counter);
 
 int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head) {
+    status_t status = STATUS_UNINITIALIZED, final_status = STATUS_SUCCESS;
     FILE *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
     parsed_line_t parsed_line;
-    status_t status = STATUS_UNINITIALIZED;
     int IC  = IC_START_ADDR;
     unsigned int asm_line_counter = 1;
+    
     am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
         goto lb_cleanup;
@@ -94,7 +95,7 @@ int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_
     while (fgets(line_buffer, sizeof(line_buffer), am_fptr) != NULL) {
         memset(&parsed_line, 0, sizeof(parsed_line));
 
-        if (parse_line(line_buffer, &parsed_line) != STATUS_SUCCESS)
+        if (parse_line(line_buffer, &parsed_line, asm_line_counter) != STATUS_SUCCESS)
             continue;
         if (parsed_line.operation[0] == '\0')
             continue;

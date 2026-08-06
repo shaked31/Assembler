@@ -16,6 +16,7 @@
 #include "../include/memory_image.h"
 #include "../include/file_generator.h"
 #include "../include/globals.h"
+#include "../include/error_handler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,14 +33,16 @@ int main(int argc, char* argv[]) {
     int i = 0;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: ./assembler <file1> <file2> ...\n");
+        print_sys_error("Usage: ./assembler <file1> <file2> ...\n");
         status = STATUS_FAILURE_BINARY_USAGE;
         return status;
     }
     
     for (i = 1 ; i < argc ; i++) {
         if (i != 1) printf("\n");
-        printf("Assembling file %s\n", argv[i]);
+        printf("-----------------------------------------------------\n");
+        printf("Assembling file %s.as\n", argv[i]);
+        printf("-----------------------------------------------------\n");
 
         sym_head = NULL;
         ext_head = NULL;
@@ -47,25 +50,25 @@ int main(int argc, char* argv[]) {
         memset(data_image, 0, sizeof(data_image));
         
         if ((status = run_pre_assembler(argv[i]))) {
-            fprintf(stderr, "Error pre assembling file %s\n", argv[i]);
+            print_sys_error("Error pre assembling file %s\n", argv[i]);
             continue;
         }
 
         if ((status = run_first_pass(argv[i], &sym_head, code_image, data_image, &IC, &DC))) {
-            fprintf(stderr, "Error in first pass for file %s\n", argv[i]);
+            print_sys_error("Error in first pass for file %s\n", argv[i]);
             free_symbol_table(sym_head);
             continue;
         }
 
         if ((status = run_second_pass(argv[i], sym_head, code_image, &ext_head))) {
-            fprintf(stderr, "Error in second pass for file %s\n", argv[i]);
+            print_sys_error("Error in second pass for file %s\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
             continue;
         }
 
         if ((status = generate_files(argv[i], code_image, data_image, &sym_head, &ext_head, IC, DC))) {
-            fprintf(stderr, "Error generating output files for file %s\n", argv[i]);
+            print_sys_error("Error generating output files for file %s\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
             continue;

@@ -71,16 +71,18 @@ static int update_data_symbols(symbol_node_t **sym_head, int final_IC);
 
 int run_first_pass(const char* filename, symbol_node_t **sym_head,
                         machine_word_t *code_image, unsigned char *data_image, int *out_IC, int *out_DC) {
-    status_t status = STATUS_UNINITIALIZED;
+    
+    status_t status = STATUS_UNINITIALIZED, final_status = STATUS_SUCCESS;
     FILE *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
     parsed_line_t parsed_line;
     unsigned int asm_line_counter = 1;
-
     int IC  = IC_START_ADDR;
     int DC  = DC_START_ADDR;
+    int has_error = 0;
+    int parse_ret = 0;
 
-    am_fptr = open_file_with_extension(filename, "am", "r", &status, asm_line_counter);
+    am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -88,7 +90,14 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
     while (fgets(line_buffer, sizeof(line_buffer), am_fptr) != NULL) {
         memset(&parsed_line, 0, sizeof(parsed_line));
 
-        if (parse_line(line_buffer, &parsed_line, asm_line_counter) != STATUS_SUCCESS) {
+        status = parse_line(line_buffer, &parsed_line, asm_line_counter);
+        if (status == STATUS_FAILURE_LINE_TOO_LONG && !feof(am_fptr))
+            flush_buffer(am_fptr);
+
+        if (status != STATUS_SUCCESS) {
+            if (status != STATUS_FAILURE_NOTHING_TO_PARSE)
+                final_status = status;
+            asm_line_counter++;
             continue;
         }
 
@@ -98,12 +107,13 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
         else {
             status = (int)handle_code(&parsed_line, sym_head, code_image, &IC, asm_line_counter);
         }
-
-        if (status != STATUS_SUCCESS) {
-            goto lb_cleanup;
-        }
-
+        
         asm_line_counter++;
+    }
+
+    if (status != STATUS_SUCCESS) {
+        status = final_status;
+        goto lb_cleanup;
     }
 
     update_data_symbols(sym_head, IC);
@@ -145,8 +155,8 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
         if (existing_sym == NULL)
             status = insert_symbol(sym_head, parsed->operands, 0, SYM_EXTERNAL, 0);
         
-        if (status != STATUS_SUCCESS)
-            goto lb_cleanup;
+        else
+            status = STATUS_SUCCESS;
     }
     
     else if (strcmp(parsed->operation, ENTRY_DIRECTIVE) == 0) {

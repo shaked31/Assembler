@@ -28,6 +28,12 @@ typedef struct ext_node_s {
  */
 int add_ext_record(ext_node_t **head, const char* name, int address);
 
+/**
+ * @fn free_ext_table
+ * @brief Frees all dynamically allocated memory in the external linked list
+ * 
+ * @param[in]  head  Pointer to the head of the external nodes linked list
+ */
 void free_ext_list(ext_node_t *head);
 
 #endif /* EXT_TRACKER_H */

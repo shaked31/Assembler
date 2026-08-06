@@ -27,7 +27,7 @@
  * @param[out]  DC          Pointer to store the final data counter
  * @return                  An integer of status based on status_t enum
  */
-int run_first_pass(const char* filename, symbol_node_t **sym_head,
-                        machine_word_t *code_image, unsigned char *data_image, int *IC, int *DC);
+int run_first_pass(const char* filename, symbol_node_t **sym_head, machine_word_t *code_image,
+                        unsigned char *data_image, int *IC, int *DC);
                         
 #endif /* FIRST_PASS_H */

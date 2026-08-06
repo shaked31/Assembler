@@ -43,7 +43,7 @@ static void free_macro_table(macro_node_t *head);
 static macro_node_t* find_macro(macro_node_t *head, const char* name);
 
 int run_pre_assembler(const char* filename) {
-    status_t status = STATUS_UNINITIALIZED;
+    status_t status = STATUS_UNINITIALIZED, final_status = STATUS_SUCCESS;
     FILE *as_fptr = NULL, *am_fptr = NULL;
     char line_buffer[MAX_LINE_LEN];
     parsed_line_t parsed_line = { 0 };
@@ -51,20 +51,28 @@ int run_pre_assembler(const char* filename) {
     unsigned char is_in_macro = 0;
     unsigned int asm_line_counter = 1;
 
-    as_fptr = open_file_with_extension(filename, "as", "r", &status, asm_line_counter);
+    as_fptr = open_file_with_extension(filename, "as", "r", &status);
     if (as_fptr == NULL) {
         goto lb_cleanup;
     }
 
-    am_fptr = open_file_with_extension(filename, "am", "w", &status, asm_line_counter);
+    am_fptr = open_file_with_extension(filename, "am", "w", &status);
     if (am_fptr == NULL) {
         goto lb_cleanup;
     }
 
     while (fgets(line_buffer, sizeof(line_buffer), as_fptr) != NULL) {
         memset(&parsed_line, 0, sizeof(parsed_line));
-        
-        if (parse_line(line_buffer, &parsed_line) == 1) {
+        status = parse_line(line_buffer, &parsed_line, asm_line_counter);
+
+        if (status == STATUS_FAILURE_LINE_TOO_LONG && !feof(as_fptr)) {
+            flush_buffer(as_fptr);
+        }
+
+        if (status != STATUS_SUCCESS) {
+            if (status != STATUS_FAILURE_NOTHING_TO_PARSE)
+                final_status = status;
+            asm_line_counter++;
             continue;
         }
 
@@ -75,7 +83,7 @@ int run_pre_assembler(const char* filename) {
             }
             else {
                 if ((status = (status_t)append_to_macro(curr_mcro, line_buffer))) {
-                    goto lb_cleanup;
+                    final_status = status;
                 }
             }
         }
@@ -83,11 +91,12 @@ int run_pre_assembler(const char* filename) {
         else {
             if (strcmp(parsed_line.operation, "mcro") == 0) {
                 /* Found a new macro definition */
-                if(get_instruction_info(parsed_line.operation) != NULL) {
+                if(get_instruction_info(parsed_line.operands) != NULL) {
                     /* The macro name is an instruction name */
                     print_asm_error(asm_line_counter, "Macro name '%s' can't be an instruction name\n", parsed_line.operation);
-                    status = STATUS_FAILURE_INVALID_MACRO_NAME;
-                    goto lb_cleanup;
+                    final_status = STATUS_FAILURE_INVALID_MACRO_NAME;
+                    asm_line_counter++;
+                    continue;
                 }
 
                 new_node = (macro_node_t*)malloc(sizeof(macro_node_t));
@@ -121,6 +130,11 @@ int run_pre_assembler(const char* filename) {
             }
         }
         asm_line_counter++;
+    }
+    
+    if (status != STATUS_SUCCESS) {
+        status = final_status;
+        goto lb_cleanup;
     }
 
     status = STATUS_SUCCESS;

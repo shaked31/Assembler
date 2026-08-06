@@ -16,7 +16,6 @@
  * @param[in]  err_line_num  The line number in which there was an error
  * @param[in]  format        The format that should be printed
  * @param[in]  ...           Optional args for format
- * @return
  */
 void print_asm_error(unsigned int err_line_num, const char* format, ...);
 
@@ -28,7 +27,6 @@ void print_asm_error(unsigned int err_line_num, const char* format, ...);
  * @param[in]  err_line_num  The line number in which there was an error
  * @param[in]  format        The format that should be printed
  * @param[in]  ...           Optional args for format
- * @return
  */
 void print_sys_error(const char* format, ...);
 

@@ -1,4 +1,5 @@
 #include "../include/symbol_table.h"
+#include "../include/error_handler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,7 @@ int insert_symbol(symbol_node_t **head, const char* name, int address, symbol_ty
     status_t status = STATUS_UNINITIALIZED;
     new_sym = (symbol_node_t*)malloc(sizeof(symbol_node_t));
     if (new_sym == NULL) {
-        fprintf(stderr, "Couldn't allocate memory to symbol node\n");
+        print_sys_error("Couldn't allocate memory to symbol node\n");
         status = STATUS_FAILURE_MEMORY_ALLOCATION;
         goto lb_cleanup;
     }

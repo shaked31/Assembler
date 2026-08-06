@@ -23,7 +23,7 @@
  * 
  * @return                Valid FILE pointer or NULL if memory allocation
  */
-FILE* open_file_with_extension(const char* base_name, const char* extension, const char* mode, status_t *status, unsigned int asm_line_counter);
+FILE* open_file_with_extension(const char* base_name, const char* extension, const char* mode, status_t *status);
 
 /**
  * @fn validate_operands
@@ -33,5 +33,14 @@ FILE* open_file_with_extension(const char* base_name, const char* extension, con
  * @return               An integer of status based on status_t enum
  */
 int validate_operands(const char* operands);
+
+/**
+ * @fn flush_buffer
+ * @brief Clears the buffer of the stream
+ * 
+ * @param[in]  stream  Pointer to the stream to clear
+ * @return               An integer of status based on status_t enum
+ */
+void flush_buffer(FILE *stream);
 
 #endif /* UTILS_H */

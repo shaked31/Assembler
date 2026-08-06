@@ -30,6 +30,6 @@
  * @return                  An integer of status based on status_t enum
  */
 int generate_files(const char* filename, machine_word_t *code_image, unsigned char *data_image,
-                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC, unsigned int line_counter);
+                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC);
 
 #endif /* FILE_GENERATOR_H */

@@ -13,11 +13,9 @@
  * @param[in]  data_image    Array representing the data memory
  * @param[in]  IC            An integer of the current instruction counter
  * @param[in]  DC            An integer of the current data counter
- * @param[in]  line_counter  An integer of the line count of the assembly source file
  * @return                   An integer of status based on status_t enum
  */
-static int create_ob_file(const char* filename, machine_word_t *code_image, 
-    unsigned char *data_image, int IC, int DC, unsigned int line_counter);
+static int create_ob_file(const char* filename, machine_word_t *code_image, unsigned char *data_image, int IC, int DC);
 
 /**
  * @fn create_ent_file
@@ -27,10 +25,9 @@ static int create_ob_file(const char* filename, machine_word_t *code_image,
  * 
  * @param[in]  filename      The full name of the .am file to go through
  * @param[in]  sym_head      Pointer of the head of the symbol linked list linked list
- * @param[in]  line_counter  An integer of the line count of the assembly source file
  * @return                   An integer of status based on status_t enum
  */
-static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsigned int line_counter);
+static int create_ent_file(const char* filename, symbol_node_t *sym_head);
 
 /**
  * @fn create_ext_file
@@ -40,24 +37,23 @@ static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsign
  * 
  * @param[in]  filename      The full name of the .am file to go through
  * @param[in]  ext_head      Pointer to the head of the externals linked list
- * @param[in]  line_counter  An integer of the line count of the assembly source file
  * @return                   An integer of status based on status_t enum
  */
-static int create_ext_file(const char* filename, ext_node_t *ext_head, unsigned int line_counter);
+static int create_ext_file(const char* filename, ext_node_t *ext_head);
 
 int generate_files(const char* filename, machine_word_t *code_image, unsigned char *data_image,
-                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC, unsigned int line_counter) {
+                        symbol_node_t **sym_head, ext_node_t **ext_head, int IC, int DC) {
 
     status_t status = STATUS_UNINITIALIZED;
-    if ((status = create_ob_file(filename, code_image, data_image, IC, DC, line_counter))) {
+    if ((status = create_ob_file(filename, code_image, data_image, IC, DC))) {
         return status;
     }
 
-    if ((status = create_ent_file(filename, *sym_head, line_counter))) {
+    if ((status = create_ent_file(filename, *sym_head))) {
         return status;
     }
 
-    if ((status = create_ext_file(filename, *ext_head, line_counter))) {
+    if ((status = create_ext_file(filename, *ext_head))) {
         return status;
     }
 
@@ -65,15 +61,14 @@ int generate_files(const char* filename, machine_word_t *code_image, unsigned ch
     return status;
 }
 
-static int create_ob_file(const char* filename, machine_word_t *code_image, unsigned char *data_image, 
-                            int IC, int DC, unsigned int line_counter) {
+static int create_ob_file(const char* filename, machine_word_t *code_image, unsigned char *data_image, int IC, int DC) {
     status_t status = STATUS_UNINITIALIZED;
     FILE *ob_fptr = NULL;
     int i = 0;
     int addr = IC_START_ADDR;
     int instruction_bytes = IC - IC_START_ADDR;
 
-    ob_fptr = open_file_with_extension(filename, "ob", "w", &status, line_counter);
+    ob_fptr = open_file_with_extension(filename, "ob", "w", &status);
     if (ob_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -100,7 +95,7 @@ CLOSE_FILE(ob_fptr);
 return (int)status;
 }
 
-static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsigned int line_counter) {
+static int create_ent_file(const char* filename, symbol_node_t *sym_head) {
     status_t status = STATUS_UNINITIALIZED;
     symbol_node_t *curr = sym_head;
     int has_entry = 0;
@@ -118,7 +113,7 @@ static int create_ent_file(const char* filename, symbol_node_t *sym_head, unsign
     }
 
 
-    ent_fptr = open_file_with_extension(filename, "ent", "w", &status, line_counter);
+    ent_fptr = open_file_with_extension(filename, "ent", "w", &status);
     if (ent_fptr == NULL) {
         goto lb_cleanup;
     }
@@ -138,7 +133,7 @@ CLOSE_FILE(ent_fptr);
 return (int)status;
 }
 
-static int create_ext_file(const char* filename, ext_node_t *ext_head, unsigned int line_counter) {
+static int create_ext_file(const char* filename, ext_node_t *ext_head) {
     status_t status = STATUS_UNINITIALIZED;
     ext_node_t *curr = ext_head;
     FILE *ext_fptr = NULL;
@@ -147,7 +142,7 @@ static int create_ext_file(const char* filename, ext_node_t *ext_head, unsigned 
         return STATUS_SUCCESS;
     }
 
-    ext_fptr = open_file_with_extension(filename, "ext", "w", &status, line_counter);
+    ext_fptr = open_file_with_extension(filename, "ext", "w", &status);
     if (ext_fptr == NULL) {
         goto lb_cleanup;
     }

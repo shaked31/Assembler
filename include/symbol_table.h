@@ -38,9 +38,9 @@ symbol_node_t* find_symbol(symbol_node_t *head, const char* name);
 
 /**
  * @fn free_symbol_table
- * @brief Safely frees all dynamically allocated memory in the symbol table.
+ * @brief Frees all dynamically allocated memory in the symbol table
  * 
- * @param[in]  head  Pointer to the head of the SymbolNode linked list.
+ * @param[in]  head  Pointer to the head of the symbol nodes linked list
  */
 void free_symbol_table(symbol_node_t *head);
 
