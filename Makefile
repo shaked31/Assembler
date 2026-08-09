@@ -34,3 +34,5 @@ clean:
 	find . -type f -name '*.ob' -delete
 	find . -type f -name '*.ent' -delete
 	find . -type f -name '*.ext' -delete
+	find . -type f -name '*.log' -delete
+	

@@ -26,6 +26,9 @@
 /* for .as, .am, .ob, .ent, .ext with \0 */
 #define FILE_EXTENSION_SIZE (5)
 
+/* Including '.' */
+#define AS_FILE_EXTENSION_SIZE (3)
+
 #define FREE_VAR(var)\
    do {\
         if (var != NULL) { \
@@ -66,6 +69,7 @@ typedef struct macro_node_s {
 typedef enum status_e {
     STATUS_UNINITIALIZED = -1,
     STATUS_SUCCESS,
+    STATUS_FAILURE_INVALID_ARG,
     STATUS_FAILURE_BINARY_USAGE,
     STATUS_FAILURE_MEMORY_ALLOCATION,
     STATUS_FAILURE_FILE_MGMT,

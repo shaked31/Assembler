@@ -64,8 +64,8 @@ int generate_files(const char* filename, machine_word_t *code_image, unsigned ch
 static int create_ob_file(const char* filename, machine_word_t *code_image, unsigned char *data_image, int IC, int DC) {
     status_t status = STATUS_UNINITIALIZED;
     FILE *ob_fptr = NULL;
-    int i = 0;
     int addr = IC_START_ADDR;
+    int i = 0, j = 0;
     int instruction_bytes = IC - IC_START_ADDR;
 
     ob_fptr = open_file_with_extension(filename, "ob", "w", &status);
@@ -83,9 +83,13 @@ static int create_ob_file(const char* filename, machine_word_t *code_image, unsi
         addr += INSTRUCTION_SIZE_BYTES;
     }
 
-    for (i = 0 ; i < DC ; i++) {
-        fprintf(ob_fptr, "%04d %02X\n", addr, data_image[i]);
-        addr++;
+    for (i = 0 ; i < DC ; i += 4) {
+        fprintf(ob_fptr, "%04d", addr);
+        for (j = 0 ; j < 4 && (i + j) < DC ; j++) {
+            fprintf(ob_fptr, "%02X", addr);
+        }
+        fprintf(ob_fptr, "\n");
+        addr += j;
     }
 
     status = STATUS_SUCCESS;

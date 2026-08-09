@@ -43,4 +43,30 @@ int validate_operands(const char* operands);
  */
 void flush_buffer(FILE *stream);
 
+/**
+ * @fn parse_assembler_arg
+ * @brief checks validity of argument, changes if if able
+ * 
+ * @param[in,out]  arg  String of argument from main function
+ * @return              An integer of status based on status_t enum
+ */
+int parse_assembler_arg(char* arg);
+
+/**
+ * @fn remove_invalid_am_file
+ * @brief Deletes .am file based on received filename
+ * 
+ * @param[in]  base_filename  The base filename
+ */
+void remove_invalid_am_file(const char* base_filename);
+
+/**
+ * @fn is_numeric
+ * @brief Checks if a string is numeric
+ * 
+ * @param[in]  str  The string to check
+ * @return          1 if the string is numeric, else 0
+ */
+int is_numeric(const char* str);
+
 #endif /* UTILS_H */

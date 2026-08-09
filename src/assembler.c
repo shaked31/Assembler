@@ -8,15 +8,19 @@
  */
 
 
+#include "../include/globals.h"
 #include "../include/parser.h"
-#include "../include/pre_assembler.h"
-#include "../include/first_pass.h"
-#include "../include/second_pass.h"
+#include "../include/utils.h"
+#include "../include/error_handler.h"
+
 #include "../include/symbol_table.h"
 #include "../include/memory_image.h"
 #include "../include/file_generator.h"
-#include "../include/globals.h"
-#include "../include/error_handler.h"
+
+#include "../include/pre_assembler.h"
+#include "../include/first_pass.h"
+#include "../include/second_pass.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,8 +31,11 @@ int main(int argc, char* argv[]) {
     status_t status = STATUS_UNINITIALIZED;
     symbol_node_t *sym_head = NULL;
     ext_node_t *ext_head = NULL;
-    machine_word_t code_image[MAX_MEMORY_SIZE] = { 0 };
-    unsigned char data_image[MAX_MEMORY_SIZE] = { 0 };
+
+    /* Both code_image and data_image gets initialized to 0's at start of loop */
+    machine_word_t code_image[MAX_MEMORY_SIZE];
+    unsigned char data_image[MAX_MEMORY_SIZE];
+    
     int IC, DC;
     int i = 0;
 
@@ -40,9 +47,14 @@ int main(int argc, char* argv[]) {
     
     for (i = 1 ; i < argc ; i++) {
         if (i != 1) printf("\n");
+        
+        if ((status = parse_assembler_arg(argv[i]))) {
+            print_sys_error("Invalid arg '%s'\n", argv[i]);
+            continue;
+        }
+
         printf("-----------------------------------------------------\n");
         printf("Assembling file %s.as\n", argv[i]);
-        printf("-----------------------------------------------------\n");
 
         sym_head = NULL;
         ext_head = NULL;
@@ -50,32 +62,32 @@ int main(int argc, char* argv[]) {
         memset(data_image, 0, sizeof(data_image));
         
         if ((status = run_pre_assembler(argv[i]))) {
-            print_sys_error("Error pre assembling file %s\n", argv[i]);
+            print_sys_error("Error pre assembling file %s.as\n", argv[i]);
             continue;
         }
 
         if ((status = run_first_pass(argv[i], &sym_head, code_image, data_image, &IC, &DC))) {
-            print_sys_error("Error in first pass for file %s\n", argv[i]);
+            print_sys_error("Error in first pass for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
             continue;
         }
 
         if ((status = run_second_pass(argv[i], sym_head, code_image, &ext_head))) {
-            print_sys_error("Error in second pass for file %s\n", argv[i]);
+            print_sys_error("Error in second pass for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
             continue;
         }
 
         if ((status = generate_files(argv[i], code_image, data_image, &sym_head, &ext_head, IC, DC))) {
-            print_sys_error("Error generating output files for file %s\n", argv[i]);
+            print_sys_error("Error generating output files for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
             continue;
         }
 
-        printf("Successfully assembled %s\n", argv[i]);
-
+        printf("Successfully assembled %s.as\n", argv[i]);
+        printf("-----------------------------------------------------\n");
 
         free_symbol_table(sym_head);
         free_ext_list(ext_head);

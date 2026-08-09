@@ -1,10 +1,12 @@
-#include "../include/second_pass.h"
 #include "../include/parser.h"
+#include "../include/utils.h"
+#include "../include/error_handler.h"
+
 #include "../include/instructions.h"
 #include "../include/symbol_table.h"
 #include "../include/ext_tracker.h"
-#include "../include/utils.h"
-#include "../include/error_handler.h"
+
+#include "../include/second_pass.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,6 +81,15 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
 static int encode_j_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word,
                             symbol_node_t *sym_head, ext_node_t **ext_head, int IC, unsigned int asm_line_counter);
 
+/**
+ * @fn is_valid_register
+ * @brief This function checks whether the received full register name is valid
+ * 
+ * @param[in]  register_name  The actual string of the register ('$' and the register)
+ * @return                    An integer of status based on status_t enum
+ */
+static int is_valid_register(const char* register_name);
+
 int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_t *code_image, ext_node_t **ext_head) {
     status_t status = STATUS_UNINITIALIZED, final_status = STATUS_SUCCESS;
     FILE *am_fptr = NULL;
@@ -94,27 +105,44 @@ int run_second_pass(const char* filename, symbol_node_t *sym_head, machine_word_
 
     while (fgets(line_buffer, sizeof(line_buffer), am_fptr) != NULL) {
         memset(&parsed_line, 0, sizeof(parsed_line));
+        status = parse_line(line_buffer, &parsed_line, asm_line_counter);
 
-        if (parse_line(line_buffer, &parsed_line, asm_line_counter) != STATUS_SUCCESS)
+        if (status == STATUS_FAILURE_LINE_TOO_LONG && !feof(am_fptr)) {
+            flush_buffer(am_fptr);
+        }
+
+        if (status != STATUS_SUCCESS) {
+            if (status != STATUS_FAILURE_NOTHING_TO_PARSE)
+                final_status = status;
+            asm_line_counter++;
             continue;
-        if (parsed_line.operation[0] == '\0')
+        }
+
+        if (parsed_line.operation[0] == '\0') {
+            asm_line_counter++;
             continue;
+        }
+            
 
         if (strcmp(parsed_line.operation, ENTRY_DIRECTIVE) == 0) {
             status = handle_entry(&parsed_line, sym_head, asm_line_counter);
-            if (status != STATUS_SUCCESS) {
-                goto lb_cleanup;
-            }
         }
         else if (parsed_line.operation[0] != '.') {
             status = encode_instruction(&parsed_line, sym_head, code_image, ext_head, &IC, asm_line_counter);
-            if (status != STATUS_SUCCESS) {
-                goto lb_cleanup;
-            }
         }
+
+        if (status != STATUS_SUCCESS) {
+            final_status = status;
+        }
+
         asm_line_counter++;
     }
 
+    if (final_status != STATUS_SUCCESS) {
+        status = final_status;
+        goto lb_cleanup;
+    }
+    
     status = STATUS_SUCCESS;
 
 lb_cleanup:
@@ -130,6 +158,12 @@ static int handle_entry(parsed_line_t *parsed, symbol_node_t *sym_head, unsigned
     if (existing_sym == NULL) {
         print_asm_error(asm_line_counter, ".entry directive refers to undefined label '%s'\n", parsed->operands);
         status = STATUS_FAILURE_UNDEFINED_LABEL;
+        goto lb_cleanup;
+    }
+
+    if (existing_sym->type == SYM_EXTERNAL) {
+        print_asm_error(asm_line_counter, "The symbol'%s' can't be .entry and .extern\n", parsed->operands);
+        status = STATUS_FAILURE_INVALID_OPERANDS;
         goto lb_cleanup;
     }
 
@@ -173,7 +207,7 @@ return (int)status;
 static int encode_r_type(char* operands, const instruction_info_t *instruction_info, machine_word_t *word, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     char operands_cpy[MAX_LINE_LEN] = { 0 };
-    char *token = NULL;
+    char *curr_operand = NULL;
     int r1 = 0, r2 = 0, r3 = 0;
     int count = 0;
 
@@ -183,19 +217,25 @@ static int encode_r_type(char* operands, const instruction_info_t *instruction_i
     }
 
     strcpy(operands_cpy, operands);
-    token = strtok(operands_cpy, ", \t\r\n");
-    while (token != NULL && count < 3) {
-        if (token[0] == '$') {
+    curr_operand = strtok(operands_cpy, ", \t\r\n");
+    while (curr_operand != NULL && count < 3) {
+        if (curr_operand[0] == '$') {
+            if (!is_valid_register(curr_operand)) {
+                print_asm_error(asm_line_counter, "Invalid register '%s'\n", curr_operand);
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+            }
+
             if (count == 0)
-                r1 = atoi(token + 1);
+                r1 = atoi(curr_operand + 1);
             else if (count == 1)
-                r2 = atoi(token + 1);
+                r2 = atoi(curr_operand + 1);
             else if (count == 2)
-                r3 = atoi(token + 1);
+                r3 = atoi(curr_operand + 1);
 
             count++;
         }
-        token = strtok(NULL, ", \t\r\n");
+        curr_operand = strtok(NULL, ", \t\r\n");
     }
     
     if (instruction_info->opcode == 0) {
@@ -221,7 +261,7 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
                             symbol_node_t *sym_head, int IC, unsigned int asm_line_counter) {
     status_t status = STATUS_UNINITIALIZED;
     char operands_cpy[MAX_LINE_LEN] = { 0 };
-    char *t1 = NULL, *t2 = NULL, *t3 = NULL;
+    char *op1 = NULL, *op2 = NULL, *op3 = NULL;
     symbol_node_t *sym = NULL;
     
     if ((status = validate_operands(operands))) {
@@ -230,11 +270,11 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
     }
 
     strcpy(operands_cpy, operands);
-    t1 = strtok(operands_cpy, ", \t\r\n");
-    t2 = strtok(NULL, ", \t\r\n");
-    t3 = strtok(NULL, ", \t\r\n");
+    op1 = strtok(operands_cpy, ", \t\r\n");
+    op2 = strtok(NULL, ", \t\r\n");
+    op3 = strtok(NULL, ", \t\r\n");
 
-    if (t1 == NULL || t2 == NULL || t3 == NULL) {
+    if (op1 == NULL || op2 == NULL || op3 == NULL) {
         print_asm_error(asm_line_counter, "Missing operands for I-type instruction\n");
         status = STATUS_FAILURE_MISSING_OPERANDS;
         goto lb_cleanup;
@@ -242,17 +282,23 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
 
     if (instruction_info->opcode >= 15 && instruction_info->opcode <= 18) {
         /* Conditional branch instructions */
-        word->i.rs = atoi(t1 + 1);
-        word->i.rt = atoi(t2 + 1);
+        if (!is_valid_register(op1) || !is_valid_register(op2)) {
+                print_asm_error(asm_line_counter, "Invalid register\n");
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+        }
 
-        sym = find_symbol(sym_head, t3);
+        word->i.rs = atoi(op1 + 1);
+        word->i.rt = atoi(op2 + 1);
+
+        sym = find_symbol(sym_head, op3);
         if (sym == NULL) {
-            print_asm_error(asm_line_counter, "Undefined label '%s' in branch instruction\n", t3);
+            print_asm_error(asm_line_counter, "Undefined label '%s' in branch instruction\n", op3);
             status = STATUS_FAILURE_UNDEFINED_LABEL;
             goto lb_cleanup;
         }
         if (sym->type == SYM_EXTERNAL) {
-            print_asm_error(asm_line_counter, "Target branch '%s' can't be an external label\n", t3);
+            print_asm_error(asm_line_counter, "Target branch '%s' can't be an external label\n", op3);
             status = STATUS_FAILURE_UNDEFINED_LABEL;
             goto lb_cleanup;
         }
@@ -261,9 +307,14 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
     }
     else {
         /* Arithmetic and load/store instructions */
-        word->i.rs = atoi(t1 + 1);
-        word->i.immed = atoi(t2); /* Raw integer without '$' */
-        word->i.rt = atoi(t3 + 1);
+        if ((status = is_numeric(op2))) {
+            print_asm_error(asm_line_counter, "'%s' is not a numeric operand for an I-type instruction\n", op2);
+            goto lb_cleanup;
+        }
+
+        word->i.rs = atoi(op1 + 1);
+        word->i.immed = atoi(op2); /* Raw integer without '$' */
+        word->i.rt = atoi(op3 + 1);
     }
 
     status = STATUS_SUCCESS;
@@ -316,6 +367,29 @@ static int encode_j_type(char* operands, const instruction_info_t *instruction_i
         }
         else 
             word->j.address = sym->address;
+    }
+
+    status = STATUS_SUCCESS;
+
+lb_cleanup:
+return (int)status;
+}
+
+static int is_valid_register(const char* register_name) {
+    int value = 0;
+    status_t status = STATUS_UNINITIALIZED;
+
+    if (register_name == NULL || register_name[0] != '$' ||
+            !is_numeric(register_name + 1) || 
+            (register_name[1] == '0' && register_name[2] != '\0')) {
+        status = STATUS_FAILURE_INVALID_OPERANDS;
+        goto lb_cleanup;
+    }
+
+    value = atoi(register_name + 1);
+    if (value < 0 || value > 31) {
+        status = STATUS_FAILURE_INVALID_OPERANDS;
+        goto lb_cleanup;
     }
 
     status = STATUS_SUCCESS;

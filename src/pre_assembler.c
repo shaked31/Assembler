@@ -1,11 +1,13 @@
 #include "../include/globals.h"
-#include "../include/pre_assembler.h"
 #include "../include/parser.h"
+#include "../include/utils.h"
+#include "../include/error_handler.h"
+
 #include "../include/symbol_table.h"
 #include "../include/memory_image.h"
 #include "../include/instructions.h"
-#include "../include/utils.h"
-#include "../include/error_handler.h"
+
+#include "../include/pre_assembler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +80,10 @@ int run_pre_assembler(const char* filename) {
 
         if (is_in_macro) {
             if (strcmp(parsed_line.operation, "mcroend") == 0) {
+                if (parsed_line.operands[0] != '\0') {
+                    print_asm_error(asm_line_counter, "Invalid text after 'mcroend' instruction\n");
+                    final_status = STATUS_FAILURE_INVALID_OPERANDS;
+                }
                 is_in_macro = 0;
                 curr_mcro = NULL;
             }
@@ -93,7 +99,7 @@ int run_pre_assembler(const char* filename) {
                 /* Found a new macro definition */
                 if(get_instruction_info(parsed_line.operands) != NULL) {
                     /* The macro name is an instruction name */
-                    print_asm_error(asm_line_counter, "Macro name '%s' can't be an instruction name\n", parsed_line.operation);
+                    print_asm_error(asm_line_counter, "Macro name '%s' can't be an instruction name\n", parsed_line.operands);
                     final_status = STATUS_FAILURE_INVALID_MACRO_NAME;
                     asm_line_counter++;
                     continue;
@@ -121,7 +127,10 @@ int run_pre_assembler(const char* filename) {
                     if (parsed_line.label[0] != '\0') {
                         fprintf(am_fptr, "%s:\n", parsed_line.label);
                     }
-                    fputs(found_mcro->content, am_fptr);
+
+                    if (found_mcro->content != NULL) {
+                        fputs(found_mcro->content, am_fptr);
+                    }
                 }
                 else {
                     /* Just a normal assembly operation (like add) */
@@ -132,7 +141,7 @@ int run_pre_assembler(const char* filename) {
         asm_line_counter++;
     }
     
-    if (status != STATUS_SUCCESS) {
+    if (final_status != STATUS_SUCCESS) {
         status = final_status;
         goto lb_cleanup;
     }
@@ -143,6 +152,8 @@ lb_cleanup:
 CLOSE_FILE(as_fptr);
 CLOSE_FILE(am_fptr);
 free_macro_table(head_mcro); /* Contains null checking */
+if (status != STATUS_SUCCESS)
+    remove_invalid_am_file(filename);
 return (int)status;
 }
 

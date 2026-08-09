@@ -22,6 +22,12 @@
 #define DATA_HALF_WORD (2)
 #define DATA_WORD (4)
 
+#define MIN_DB_VALUE (-128)
+#define MAX_DB_VALUE (127)
+
+#define MIN_DH_VALUE (-32768)
+#define MAX_DH_VALUE (32767)
+
 #define IS_DATA_DIRECTIVE(directive) ((strcmp(directive, EXTERN_DIRECTIVE) == 0 || strcmp(directive, ENTRY_DIRECTIVE) == 0 || \
                                         strcmp(directive, ASCIZ_DIRECTIVE) == 0 || strcmp(directive, DB_DIRECTIVE) == 0 || \
                                         strcmp(directive, DH_DIRECTIVE) == 0 || strcmp(directive, DW_DIRECTIVE) == 0) ? 0 : 1)
@@ -79,8 +85,6 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
     unsigned int asm_line_counter = 1;
     int IC  = IC_START_ADDR;
     int DC  = DC_START_ADDR;
-    int has_error = 0;
-    int parse_ret = 0;
 
     am_fptr = open_file_with_extension(filename, "am", "r", &status);
     if (am_fptr == NULL) {
@@ -108,10 +112,13 @@ int run_first_pass(const char* filename, symbol_node_t **sym_head,
             status = (int)handle_code(&parsed_line, sym_head, code_image, &IC, asm_line_counter);
         }
         
+        if (status != STATUS_SUCCESS) {
+            final_status = status;
+        }
         asm_line_counter++;
     }
 
-    if (status != STATUS_SUCCESS) {
+    if (final_status != STATUS_SUCCESS) {
         status = final_status;
         goto lb_cleanup;
     }
@@ -132,7 +139,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
     symbol_node_t *existing_sym = NULL;
     char *str_start, *str_end;
     char openrads_cpy[MAX_LINE_LEN] = { 0 };
-    char *token = NULL;
+    char *curr_operand = NULL;
     long value = 0;
     int i = 0;
     
@@ -157,6 +164,8 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
         
         else
             status = STATUS_SUCCESS;
+        
+        goto lb_cleanup;
     }
     
     else if (strcmp(parsed->operation, ENTRY_DIRECTIVE) == 0) {
@@ -208,16 +217,30 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
         goto lb_cleanup;
     }
     strcpy(openrads_cpy, parsed->operands);
-    token = strtok(openrads_cpy, ", \t\r\n");
+    curr_operand = strtok(openrads_cpy, ", \t\r\n");
 
-    while (token != NULL) {
-        value = atol(token);
-
+    while (curr_operand != NULL) {
+        if ((status = is_numeric(curr_operand))) {
+            print_asm_error(asm_line_num, "'%s' is not a numeric operand for data directive\n", curr_operand);
+            goto lb_cleanup;
+        }
+        value = atol(curr_operand);
+        
         if (strcmp(parsed->operation, DB_DIRECTIVE) == 0) {
+            if (value < MIN_DB_VALUE || value > MAX_DB_VALUE) {
+                print_asm_error(asm_line_num, "Value %ld out of bounds for data byte operation\n", value);
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+            }
             data_image[*DC] = (unsigned char)(value & 0xFF);
             (*DC) += DATA_BYTE;
         }
         else if (strcmp(parsed->operation, DH_DIRECTIVE) == 0) {
+            if (value < MIN_DH_VALUE || value > MAX_DH_VALUE) {
+                print_asm_error(asm_line_num, "Value %ld out of bounds for data half word operation\n", value);
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+            }
             data_image[*DC] = (unsigned char)(value & 0xFF);
             data_image[*DC + 1] = (unsigned char)((value >> 8) & 0xFF);
             (*DC) += DATA_HALF_WORD;
@@ -230,7 +253,7 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
             (*DC) += DATA_WORD;
         }
 
-        token = strtok(NULL, ", \t\r\n");
+        curr_operand = strtok(NULL, ", \t\r\n");
     }
 
     status = STATUS_SUCCESS;
