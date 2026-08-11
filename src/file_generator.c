@@ -86,7 +86,7 @@ static int create_ob_file(const char* filename, machine_word_t *code_image, unsi
     for (i = 0 ; i < DC ; i += 4) {
         fprintf(ob_fptr, "%04d", addr);
         for (j = 0 ; j < 4 && (i + j) < DC ; j++) {
-            fprintf(ob_fptr, "%02X", addr);
+            fprintf(ob_fptr, " %02X", data_image[i + j]);
         }
         fprintf(ob_fptr, "\n");
         addr += j;

@@ -220,7 +220,7 @@ static int encode_r_type(char* operands, const instruction_info_t *instruction_i
     curr_operand = strtok(operands_cpy, ", \t\r\n");
     while (curr_operand != NULL && count < 3) {
         if (curr_operand[0] == '$') {
-            if (!is_valid_register(curr_operand)) {
+            if (is_valid_register(curr_operand) != STATUS_SUCCESS) {
                 print_asm_error(asm_line_counter, "Invalid register '%s'\n", curr_operand);
                 status = STATUS_FAILURE_INVALID_OPERANDS;
                 goto lb_cleanup;
@@ -282,7 +282,7 @@ static int encode_i_type(char* operands, const instruction_info_t *instruction_i
 
     if (instruction_info->opcode >= 15 && instruction_info->opcode <= 18) {
         /* Conditional branch instructions */
-        if (!is_valid_register(op1) || !is_valid_register(op2)) {
+        if (is_valid_register(op1) != STATUS_SUCCESS || is_valid_register(op2) != STATUS_SUCCESS) {
                 print_asm_error(asm_line_counter, "Invalid register\n");
                 status = STATUS_FAILURE_INVALID_OPERANDS;
                 goto lb_cleanup;
@@ -380,7 +380,7 @@ static int is_valid_register(const char* register_name) {
     status_t status = STATUS_UNINITIALIZED;
 
     if (register_name == NULL || register_name[0] != '$' ||
-            !is_numeric(register_name + 1) || 
+            is_numeric(register_name + 1) != STATUS_SUCCESS || 
             (register_name[1] == '0' && register_name[2] != '\0')) {
         status = STATUS_FAILURE_INVALID_OPERANDS;
         goto lb_cleanup;
