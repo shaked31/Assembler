@@ -11,7 +11,7 @@ BIN = assembler
 
 VALGRIND = valgrind
 VFLAGS = --leak-check=full --show-leak-kinds=all --track-origins=yes
-FILE = tests/test1
+FILES = ""
 
 .PHONY: clean debug valgrind
 
@@ -26,7 +26,7 @@ debug: CFLAGS += -g -O0
 debug: clean $(BIN)
 
 valgrind: debug
-	$(VALGRIND) $(VFLAGS) ./$(BIN) $(FILE)
+	$(VALGRIND) $(VFLAGS) ./$(BIN) $(FILES)
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN)

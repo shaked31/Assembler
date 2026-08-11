@@ -28,6 +28,9 @@
 #define MIN_DH_VALUE (-32768)
 #define MAX_DH_VALUE (32767)
 
+#define MIN_DW_VALUE (-2147483648L)
+#define MAX_DW_VALUE (2147483647L)
+
 #define IS_DATA_DIRECTIVE(directive) ((strcmp(directive, EXTERN_DIRECTIVE) == 0 || strcmp(directive, ENTRY_DIRECTIVE) == 0 || \
                                         strcmp(directive, ASCIZ_DIRECTIVE) == 0 || strcmp(directive, DB_DIRECTIVE) == 0 || \
                                         strcmp(directive, DH_DIRECTIVE) == 0 || strcmp(directive, DW_DIRECTIVE) == 0) ? 0 : 1)
@@ -246,6 +249,11 @@ static int handle_directive(parsed_line_t *parsed, symbol_node_t **sym_head, uns
             (*DC) += DATA_HALF_WORD;
         }
         else if (strcmp(parsed->operation, DW_DIRECTIVE) == 0) {
+            if (value < MIN_DW_VALUE || value > MAX_DW_VALUE) {
+                print_asm_error(asm_line_num, "Value %ld out of bounds for data word operation\n", value);
+                status = STATUS_FAILURE_INVALID_OPERANDS;
+                goto lb_cleanup;
+            }
             data_image[*DC] = (unsigned char)(value & 0xFF);
             data_image[*DC + 1] = (unsigned char)((value >> 8) & 0xFF);
             data_image[*DC + 2] = (unsigned char)((value >> 16) & 0xFF);

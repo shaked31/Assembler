@@ -1,57 +1,74 @@
-# Assembler Test Suite
+# Assembler (MMN 14)
 
-18 `.as` files covering every stage of the pipeline (pre-assembler,
-first pass, second pass) plus successful end-to-end runs. Organized
-by expected outcome so this doubles as a regression suite you can
-re-run after any change.
+## Overview
+This project is a two-pass assembler written in ANSI C for a simulated 32-bit machine architecture.
+The assembler translates custom assembly language source code (`.as` files) into machine code, resolving macros, evaluating data directives, and linking symbolic memory addresses. 
 
-## `valid/` — should assemble successfully, producing `.am`/`.ob`/`.ent`/`.ext`
+## Authors
+* **Shaked Pollak**
+* **Daniela Aslan**
 
-| File | What it checks |
-|---|---|
-| `valid1_full_reference.as` | Every instruction format (R/I/J), all four directives, `.entry` + `.extern`. Byte-verified against the assignment's own worked example — a strong end-to-end regression check, not just a smoke test. |
-| `valid2_macros.as` | A macro defined once, invoked twice. Check the generated `.am` to confirm both invocations were actually expanded. |
-| `valid3_data_edge_ranges.as` | `.db`/`.dw`/`.dh` at the exact edges of their legal ranges (not just "some value that fits"), a multi-word `.asciz` string, register-indirect `jmp`. |
-| `valid4_mcro_substring_safe.as` | The literal text "mcro" appears inside a comment and inside a quoted string. Neither is a real macro definition — this only passes if macro-start detection excludes comments/quoted content rather than doing a raw substring search. |
+## Architecture & Pipeline
+The assembler processes input files through a strict, modular pipeline:
 
-## `pre_assembler_failures/` — should fail before first pass; no output files
+1. **Pre-Assembler (`pre_assembler.c`):** 
+   * Scans the source code for macro definitions (`mcro` and `mcroend`).
+   * Saves macros to a dynamic linked list.
+   * Expands macro calls in the source code and generates an intermediate `.am` file.
+2. **First Pass (`first_pass.c`):**
+   * Parses the `.am` file to build a Symbol Table (`symbol_table.c`).
+   * Validates instruction syntax, register bounds, and data directive limits.
+   * Calculates the memory requirements for the Instruction Counter (IC) and Data Counter (DC).
+3. **Second Pass (`second_pass.c`):**
+   * Encodes the R-Type, I-Type, and J-Type instructions into 32-bit machine words (`memory_image.h`).
+   * Resolves direct and relative memory addresses for branch and jump instructions using the Symbol Table.
+   * Tracks `.entry` and `.extern` symbol usages.
+4. **File Generation (`file_generator.c`):**
+   * Exports the binary machine code into an Object (`.ob`) file, formatted in hexadecimal.
+   * Generates Entry (`.ent`) and External (`.ext`) files for the linker if applicable.
 
-| File | What it checks |
-|---|---|
-| `pre1_macro_name_errors.as` | Reserved-word macro name, duplicate macro name, garbage text after a macro name — three errors, one run. |
-| `pre2_garbage_before_mcro.as` | Text before the `mcro` keyword on a definition line (`asdas mcro FOO`). Must be flagged as an error, not silently treated as an ordinary line. |
-| `pre3_mcroend_errors.as` | Garbage text before *and* after `mcroend`, on two separate macros. |
-| `pre4_empty_macro.as` | A macro with zero body lines, then invoked. Either rejecting it at definition or accepting it as a no-op expansion is defensible — what matters is that it doesn't crash. This is the regression test if you've previously hit a segfault on an empty macro body. |
+## Memory & Error Handling
+* **Strict Validation:** The parser thoroughly checks for line-length limits (max 80 chars), valid numeric ranges (e.g., 16-bit limits for `.dh`), illegal comma placements, and reserved-word violations.
+* **Continuous Error Scanning:** If a syntax error is found, the assembler logs the exact line number and error type to `stderr` but continues scanning the file to report all remaining errors. Output files are safely aborted if any error is detected.
+* **No Memory Leaks:** Dynamic memory allocation for linked lists (macros, symbols, and externals) is strictly managed and freed using unified `goto cleanup` blocks.
 
-## `first_pass_failures/` — should fail during the first pass; no output files
+## Project Structure
+* `src/` - Contains all `.c` source files.
+* `include/` - Contains all `.h` header files and type definitions.
+* `tests/` - Contains some valid and invalid `.as` tests.
+* `obj/` - Generated directory for compiled object files.
+* `Makefile` - Compilation rules.
 
-| File | What it checks |
-|---|---|
-| `fp1_register_errors.as` | Register out of range (`$32`), leading zero (`$05`), non-numeric register. |
-| `fp2_label_errors.as` | Label starting with a digit, a reserved-word label, a label over 31 characters, a duplicate label. |
-| `fp3_comma_errors.as` | Leading comma, doubled comma, missing comma, trailing comma. |
-| `fp4_directive_value_errors.as` | `.db` value out of `[-128,127]`, `.dh` value out of `[-32768,32767]`, `.asciz` with no closing quote. |
-| `fp5_unknown_commands.as` | An unknown instruction name and an unknown directive name. |
-| `fp6_line_too_long.as` | A (commented) source line padded past 80 characters, to check the length limit is enforced at read time. |
+## How to Build
+To compile the project, navigate to the root directory and run:
 
-## `second_pass_failures/` — first pass succeeds, second pass fails; no output files
+```bash
+make
+```
 
-| File | What it checks |
-|---|---|
-| `sp1_undefined_label.as` | `jmp` and a conditional branch, both targeting a label that's never defined. Only catchable once the whole symbol table exists. |
-| `sp2_external_in_branch.as` | An `.extern` symbol used as a conditional-branch target — illegal, since branches encode a relative distance that can't be computed for a symbol defined elsewhere. |
-| `sp3_entry_extern_conflict.as` | The same symbol declared both `.extern` and `.entry`, tested in **both** orderings deliberately — one direction is easy to catch in the first pass, the other requires a second-pass check; a common place for only one direction to get implemented. |
-| `sp4_entry_undefined.as` | `.entry` referring to a symbol that's never defined — legal to check only after the full file is scanned, since `.entry` can point at a label defined later. |
+This will compile the project using `gcc -Wall -ansi -pedantic` and generate an executable named `assembler`.
 
-## Notes
+To clean the build artifacts and generated output files, run:
 
-- Every error-case file is written to trigger **multiple** distinct
-  errors within its own stage, on purpose — a correct implementation
-  should report all of them in one run rather than stopping at the
-  first. If a file reports fewer errors than its description lists,
-  that's worth investigating on its own.
-- None of the failing files should produce *any* of `.am`/`.ob`/`.ent`/`.ext`
-  — partial output on a failing file is itself a bug worth flagging.
-- Comments in this language must occupy a whole line (first
-  non-blank character is `;`) — there's no inline/trailing-comment
-  syntax, so none of these files rely on one.
+```bash
+make clean
+```
+
+### Advanced Make Targets
+For development and debugging, this project includes additional Makefile targets:
+* `make debug`: Compiles the assembler with debugging symbols (`-g`) and disables optimization (`-O0`).
+* `make valgrind FILES="<path/to/file>"`: Compiles the project in debug mode and executes it through Valgrind to perform a memory leak and bounds check.
+
+
+## Usage
+Run the assembler by passing one or more base file names (with or without the `.as` extension) as command-line arguments:
+
+```bash
+./assembler file1 file2
+```
+
+For each valid input file (e.g., `file1.as`), the assembler will generate:
+* `file1.am`: The source code after macro expansion.
+* `file1.ob`: The compiled machine code.
+* `file1.ent`: (Optional) Entry symbols table.
+* `file1.ext`: (Optional) External symbols table.
