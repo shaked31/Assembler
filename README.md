@@ -57,7 +57,7 @@ make clean
 ### Advanced Make Targets
 For development and debugging, this project includes additional Makefile targets:
 * `make debug`: Compiles the assembler with debugging symbols (`-g`) and disables optimization (`-O0`).
-* `make valgrind FILES="<path/to/file>"`: Compiles the project in debug mode and executes it through Valgrind to perform a memory leak and bounds check.
+* `make valgrind FILES="<paths/to/files>"`: Compiles the project in debug mode and executes it through Valgrind to perform a memory leak and bounds check.
 
 
 ## Usage

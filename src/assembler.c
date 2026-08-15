@@ -63,12 +63,14 @@ int main(int argc, char* argv[]) {
         
         if ((status = run_pre_assembler(argv[i]))) {
             print_sys_error("Error pre assembling file %s.as\n", argv[i]);
+            printf("-----------------------------------------------------\n");
             continue;
         }
 
         if ((status = run_first_pass(argv[i], &sym_head, code_image, data_image, &IC, &DC))) {
             print_sys_error("Error in first pass for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
+            printf("-----------------------------------------------------\n");
             continue;
         }
 
@@ -76,6 +78,7 @@ int main(int argc, char* argv[]) {
             print_sys_error("Error in second pass for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
+            printf("-----------------------------------------------------\n");
             continue;
         }
 
@@ -83,6 +86,7 @@ int main(int argc, char* argv[]) {
             print_sys_error("Error generating output files for file %s.as\n", argv[i]);
             free_symbol_table(sym_head);
             free_ext_list(ext_head);
+            printf("-----------------------------------------------------\n");
             continue;
         }
 
